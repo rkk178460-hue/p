@@ -1,0 +1,13 @@
+interface:
+  display_name: Remotion 代码视频 · 全量版
+  short_description: 完整代码视频工作流：动画、三维、配音字幕、地图、云渲染与应用集成
+  default_prompt: 使用 $remotion-best-practices，用代码制作完整视频，按需调用配音、字幕、地图和三维功能，并导出 MP4。
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

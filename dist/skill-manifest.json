@@ -1,0 +1,587 @@
+{
+  "upstream": {
+    "repo": "remotion-dev/skills",
+    "commit": "7ba4dcf8ebe1626b00baa41e1f2478113719b60b",
+    "version": "4.0.535"
+  },
+  "file_count": 144,
+  "files": {
+    "SKILL.md": {
+      "bytes": 7133,
+      "sha256": "3df15defb8d9592c450c96418bd425850286dc15065d02f1a6088d3915673f53"
+    },
+    "agents/openai.yaml": {
+      "bytes": 487,
+      "sha256": "9faaca01450d835596e2625ca31ad2b66e0843516c0442b449bd573944025164"
+    },
+    "assets/icon.svg": {
+      "bytes": 1738,
+      "sha256": "8936b24f674a1250d999e2c2b5901374fb4240426f32bd1ae340c352a90d617d"
+    },
+    "assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "references/github-practice.md": {
+      "bytes": 4048,
+      "sha256": "2fdb9a219fa00f7b0a67ccbc824d9a9853342c0b07ae84bc31ac4c04a6350e7f"
+    },
+    "references/production-workflow.md": {
+      "bytes": 5389,
+      "sha256": "293b746b0466f3c23262b0fa627e9917cf77d7b2cba60ac1c30e63d1a7503828"
+    },
+    "remotion-captions/REFERENCE.md": {
+      "bytes": 1152,
+      "sha256": "c30df75235772cd8e17f820fa25b344ab8c1cce1aaf7031ed0a2c00dad7c1449"
+    },
+    "remotion-captions/agents/openai.yaml": {
+      "bytes": 305,
+      "sha256": "3b39a48bd00251cf124e80090fe1b792b73020bee858c5d48b5629256cc5f045"
+    },
+    "remotion-captions/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-captions/display-captions.md": {
+      "bytes": 6104,
+      "sha256": "0272634884dedf236b6f9b27fafc8aab54794b70eb1608019d115b69bea59bc2"
+    },
+    "remotion-captions/import-srt-captions.md": {
+      "bytes": 2231,
+      "sha256": "e328b6845babd08ed2a747f82c59796fd1d7b85140c8eb4d36e41639779473ad"
+    },
+    "remotion-captions/transcribe-captions.md": {
+      "bytes": 5533,
+      "sha256": "0830184ed1f634a6912536768a3aabc0092313db22796c4455e8b46dad874803"
+    },
+    "remotion-create/REFERENCE.md": {
+      "bytes": 2973,
+      "sha256": "5561610d4bb280b09c6a6f6c513a04d049005d9a4fe45ebc78a8813e74f67604"
+    },
+    "remotion-create/agents/openai.yaml": {
+      "bytes": 310,
+      "sha256": "ff3b357b492da1791c672e18ae401a23c31bd1e6f1fa6f98c5efabbb3124bd9c"
+    },
+    "remotion-create/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-create/tailwind.md": {
+      "bytes": 386,
+      "sha256": "3ef07d3225d212af6a5076e62797a04d22d394434dcdbe2c050dab0d92806f36"
+    },
+    "remotion-create/video-layout.md": {
+      "bytes": 498,
+      "sha256": "7ad94c22e3ad87671292ebb9b22f234c544d6c7fed13f8cb112b84b0f7077d4c"
+    },
+    "remotion-docs/REFERENCE.md": {
+      "bytes": 1355,
+      "sha256": "4c6c3c610c48434d8607644deb74483240dc77b6ff9d8044f7f09bcddeabdf12"
+    },
+    "remotion-docs/agents/openai.yaml": {
+      "bytes": 307,
+      "sha256": "ab02cb3008e6fc0702d7a601bfdd2f332e1224fda3c37de0265c24311c00d456"
+    },
+    "remotion-docs/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-interactivity/REFERENCE.md": {
+      "bytes": 19331,
+      "sha256": "afee9001bbde58fbc336cfc052da79980d87faa9685fec6c5341b2c380502354"
+    },
+    "remotion-interactivity/agents/openai.yaml": {
+      "bytes": 320,
+      "sha256": "84cd86b0b10e1f8b5be97bbd46677d5f618304303d922f1016ce0ea6a015d4b9"
+    },
+    "remotion-interactivity/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-interactivity/inline-effects.md": {
+      "bytes": 993,
+      "sha256": "e2204691164855f195ffefc88706785089153a1e97dae06781841575892a30a6"
+    },
+    "remotion-maps/REFERENCE.md": {
+      "bytes": 1030,
+      "sha256": "5237237d87917300905049ad2d20eb13d54d0a93d264e5cb4439947305cae279"
+    },
+    "remotion-maps/agents/openai.yaml": {
+      "bytes": 293,
+      "sha256": "9c6c75daec6eabd78cf6fbc7169be3f7dde934df1316e41df6658052056b29ee"
+    },
+    "remotion-maps/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-maps/techniques/cesium/TECHNIQUE.md": {
+      "bytes": 3909,
+      "sha256": "09057e77b67dcda23eed8ddbf1b5bd44541a952f380913a00b3bfddaa39ab675"
+    },
+    "remotion-maps/techniques/cesium/assets/CesiumFlythrough.tsx": {
+      "bytes": 8912,
+      "sha256": "4d4a90e373176e840ae76ae91533fcd9dc445407693b17091c376bb597dbcb10"
+    },
+    "remotion-maps/techniques/cesium/assets/cesium-path.json": {
+      "bytes": 12329,
+      "sha256": "329621928df19d115f93c472a0b7ddbd2463cad502a10722d3c23579a7441d44"
+    },
+    "remotion-maps/techniques/cesium/assets/city-path.json": {
+      "bytes": 223,
+      "sha256": "3bb420736d196f726b856420b319e21a8d7fc24bca7e626d67e8b00b0544e630"
+    },
+    "remotion-maps/techniques/cesium/assets/example-Root.tsx": {
+      "bytes": 923,
+      "sha256": "51c2df109015adc992b66b62f1ffc9801ad13f3dc47e4290de40cbe1b8e7809e"
+    },
+    "remotion-maps/techniques/cesium/assets/flight-path.ts": {
+      "bytes": 1240,
+      "sha256": "fab65d2d9cc0c4ca56f8a1422494d178c0e57f92a048a4720358d236ced980f0"
+    },
+    "remotion-maps/techniques/cesium/assets/sample-river.geojson": {
+      "bytes": 6409,
+      "sha256": "2c9f6dd35ac4aed56580078046941235ed7e1a5d432a6549dbf7fea4e8d1e9be"
+    },
+    "remotion-maps/techniques/cesium/references/3d-data-sources.md": {
+      "bytes": 1451,
+      "sha256": "23ac1acc576d49d599b33c812dc697b264ebe28849088c04e9827cb47b95275f"
+    },
+    "remotion-maps/techniques/cesium/references/3d-flyover-architecture.md": {
+      "bytes": 7887,
+      "sha256": "09e1891cec991a246eec60dbcf76c4ea84c52e0bee14321471197703395d0a91"
+    },
+    "remotion-maps/techniques/cesium/references/3d-troubleshooting.md": {
+      "bytes": 6741,
+      "sha256": "c803fe443f5bab1a50408f1f6aa6aded7913577eaefcb586b320c5a96c391bf2"
+    },
+    "remotion-maps/techniques/cesium/scripts/prep-cesium-path.mjs": {
+      "bytes": 5561,
+      "sha256": "6dbb4d1ae3f5fef9f3f6eb23e2a6d58622750714bb847b088ff58a3533839463"
+    },
+    "remotion-maps/techniques/mapbox/TECHNIQUE.md": {
+      "bytes": 13128,
+      "sha256": "8c434f680988a7212a9443ef9be0f62ef734f3d92af4dc47c11dad184677eec9"
+    },
+    "remotion-maps/techniques/mapbox/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-maps/techniques/maplibre/TECHNIQUE.md": {
+      "bytes": 13843,
+      "sha256": "8a13debcd2abfce415b5c8b7f323420ec77092d81ceb935853171ca9697b902c"
+    },
+    "remotion-maps/techniques/maplibre/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-maps/techniques/maptiler/TECHNIQUE.md": {
+      "bytes": 4518,
+      "sha256": "72896873e63d675caaab765941dbb8d668f2790090a63b94e165f254b77ef887"
+    },
+    "remotion-maps/techniques/maptiler/assets/CountryLabel.tsx": {
+      "bytes": 1849,
+      "sha256": "6be8c7d5b3435c8d933f05394ce5e807da5fc9fe0565db94ccaee6ac049df137"
+    },
+    "remotion-maps/techniques/maptiler/assets/MapTilerVectorElement.ts": {
+      "bytes": 2183,
+      "sha256": "c8137792824323b9db997a88c3b923e8072cf2886cd90c38d84fdbbaad8258ed"
+    },
+    "remotion-maps/techniques/maptiler/assets/RiverReveal.tsx": {
+      "bytes": 10830,
+      "sha256": "c3091e23dfd80178788d05c0bc43b17aee12aa4236d658f1a97c5acfb29a0f92"
+    },
+    "remotion-maps/techniques/maptiler/assets/example-Root.tsx": {
+      "bytes": 1039,
+      "sha256": "e53677a7a207e37cbc04693eca8ccbab5f5f040efdc67a8b5c030c3913895e83"
+    },
+    "remotion-maps/techniques/maptiler/assets/sample-data/country-meta.json": {
+      "bytes": 333134,
+      "sha256": "470a76cc5a45e58e7e1702cd80f74fcacf9d6e8b1ef7b05011f69853a999ba7b"
+    },
+    "remotion-maps/techniques/maptiler/assets/sample-data/yarlung-flow.json": {
+      "bytes": 13082,
+      "sha256": "73a99e77a2ce31cb3ac39be8fe4775d53ecf127a56137b587fca090067dfbb96"
+    },
+    "remotion-maps/techniques/maptiler/assets/tokens.ts": {
+      "bytes": 1256,
+      "sha256": "29ae05eedb4988b5b8f2eb44d241b9c472533fb6ed05d4b33df3e71e0eabc71c"
+    },
+    "remotion-maps/techniques/maptiler/references/map-data-sources.md": {
+      "bytes": 4798,
+      "sha256": "b99680cbda8e7d70dc2cb1a8823f66247a21fc59d10c6dae0dd9ba24d2f15b80"
+    },
+    "remotion-maps/techniques/maptiler/references/map-explainer-architecture.md": {
+      "bytes": 6871,
+      "sha256": "e09de8a4d00ea9a82b992918ec4d0302ee18979b73e6c777d584a9743092344f"
+    },
+    "remotion-maps/techniques/maptiler/references/map-geo-prep.md": {
+      "bytes": 4098,
+      "sha256": "a97b1913f06195601889d4e090ad056db2fffb7b83918924c8cd92847b3829ef"
+    },
+    "remotion-maps/techniques/maptiler/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-maps/techniques/maptiler/scripts/prep-geo.mjs": {
+      "bytes": 7553,
+      "sha256": "8265f56bd7c27a7d1a5fa528a77bbe1b29c6acc0e6730233583ca53e2632d490"
+    },
+    "remotion-maps/techniques/static-map/TECHNIQUE.md": {
+      "bytes": 1151,
+      "sha256": "1d2b15f2e09cbb2b2ba0d5a6ec54ecf619b6696acced0b7bec7e010fbe1f1f03"
+    },
+    "remotion-markup/3d.md": {
+      "bytes": 2292,
+      "sha256": "42cef6d68fb4a266ab495d35df0c60e03672b0d85c043f9b567f6aa7ff00dd0d"
+    },
+    "remotion-markup/REFERENCE.md": {
+      "bytes": 18216,
+      "sha256": "b873a8d4f8d18f7d344c59598fc5b3f66eaa571b57ae530682d8f1940eb68107"
+    },
+    "remotion-markup/agents/openai.yaml": {
+      "bytes": 310,
+      "sha256": "79e440561b613adf930f61b9f2ececc3284dfd92d06c4c282b73b461ffd16cb6"
+    },
+    "remotion-markup/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-markup/audio-visualization.md": {
+      "bytes": 4892,
+      "sha256": "0f4043de86639b6390e5ab888eaa66a24a10a8bd540f1443327cb88107eae1e9"
+    },
+    "remotion-markup/audio.md": {
+      "bytes": 4154,
+      "sha256": "4fc2fb35c21b2da76f912c49a3e726eaf68d7b19180bea98370c22be16949f1a"
+    },
+    "remotion-markup/calculate-metadata.md": {
+      "bytes": 3498,
+      "sha256": "711743642a475970dcadddb71805939dd6ee8f348825818cc8897b6a01e1eef0"
+    },
+    "remotion-markup/compositions.md": {
+      "bytes": 5134,
+      "sha256": "2b09427165c8708510153c83add50c0f03992bf968962bfd5e3c373860d3853c"
+    },
+    "remotion-markup/connected-compositions.md": {
+      "bytes": 5199,
+      "sha256": "aa9a912e649bc773e0110cd496b17e0174395d533e4ffb26fecbc5707f641810"
+    },
+    "remotion-markup/cropping.md": {
+      "bytes": 1350,
+      "sha256": "510ae5b6a7ce357aca99f3dfde5eff76812a84ca10a833dea7ce039611d4a4f2"
+    },
+    "remotion-markup/effects.md": {
+      "bytes": 10701,
+      "sha256": "9745f709501a3fb4593266aa4a8d98a8b0b5479cbca804fdcb51e7b9f0fe38bb"
+    },
+    "remotion-markup/embedding-videos.md": {
+      "bytes": 3725,
+      "sha256": "3b0484bc92cd1d54fd6c9a54bc75c4f837054c90bb35e5e8959701d320c6a551"
+    },
+    "remotion-markup/ffmpeg.md": {
+      "bytes": 1112,
+      "sha256": "1d83085dfb63724f374acc5f01967f6c18f3aa7df62146438262a4061a839770"
+    },
+    "remotion-markup/gifs.md": {
+      "bytes": 3783,
+      "sha256": "91e17126f7f0d57efdbdbaf34e0c234f874bd6aa66ec7854b80f17b0e32c3b22"
+    },
+    "remotion-markup/google-fonts.md": {
+      "bytes": 1714,
+      "sha256": "fff29cf692ccab0cda263cd85255cf634dbb4d1d2d99e8372b01d9fedbd6cbfd"
+    },
+    "remotion-markup/html-in-canvas.md": {
+      "bytes": 2976,
+      "sha256": "9b896dab368f8d9aec41114f8d0b96c1fbee981419b7077d6fd61621a0a54be4"
+    },
+    "remotion-markup/images.md": {
+      "bytes": 1568,
+      "sha256": "0e6c2af8ad73483ebbc761237f230c8c0db1bd9db6b60d01d48a24b8a4059284"
+    },
+    "remotion-markup/light-leaks.md": {
+      "bytes": 3148,
+      "sha256": "531514d4740c5a1a3798782300db69ebfe8f61191fc7852960bc5bdf5b82200b"
+    },
+    "remotion-markup/local-fonts.md": {
+      "bytes": 1533,
+      "sha256": "fcad2a2e3a05419d4555c59a75454c4891455dbea91ad596c1095e2887d26a11"
+    },
+    "remotion-markup/lottie.md": {
+      "bytes": 1806,
+      "sha256": "666268c8151d91042162f9efe3f02fe8c62b4c45053614eb1a9325c169428826"
+    },
+    "remotion-markup/measuring-dom-nodes.md": {
+      "bytes": 995,
+      "sha256": "a677b976eaf1cbc3cdd29cf29a3fd546c557b9a31e6b1fd70e473fde7e828733"
+    },
+    "remotion-markup/measuring-text.md": {
+      "bytes": 2801,
+      "sha256": "4bed81d1ea818db3975f878152dc24ecbc17e163117dcab10761dc8690c33f0c"
+    },
+    "remotion-markup/motion-blur.md": {
+      "bytes": 2039,
+      "sha256": "bc7559c9d0e56dffef72dcc4fb2d89d42c587ec2204ac21d33ae0c583d59632d"
+    },
+    "remotion-markup/multi-scene-video.md": {
+      "bytes": 3208,
+      "sha256": "246939d876ab2a0ba509435e960fefd63b3a9943363352ecded4afad799aa03f"
+    },
+    "remotion-markup/parameters.md": {
+      "bytes": 2403,
+      "sha256": "b002ac9959105b2b91da5786bcb20aa6ff4c6632ed37074b32711f248867dff0"
+    },
+    "remotion-markup/remotion-maps/REFERENCE.md": {
+      "bytes": 1030,
+      "sha256": "5237237d87917300905049ad2d20eb13d54d0a93d264e5cb4439947305cae279"
+    },
+    "remotion-markup/remotion-maps/agents/openai.yaml": {
+      "bytes": 293,
+      "sha256": "9c6c75daec6eabd78cf6fbc7169be3f7dde934df1316e41df6658052056b29ee"
+    },
+    "remotion-markup/remotion-maps/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/TECHNIQUE.md": {
+      "bytes": 3909,
+      "sha256": "09057e77b67dcda23eed8ddbf1b5bd44541a952f380913a00b3bfddaa39ab675"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/CesiumFlythrough.tsx": {
+      "bytes": 8912,
+      "sha256": "4d4a90e373176e840ae76ae91533fcd9dc445407693b17091c376bb597dbcb10"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/cesium-path.json": {
+      "bytes": 12329,
+      "sha256": "329621928df19d115f93c472a0b7ddbd2463cad502a10722d3c23579a7441d44"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/city-path.json": {
+      "bytes": 223,
+      "sha256": "3bb420736d196f726b856420b319e21a8d7fc24bca7e626d67e8b00b0544e630"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/example-Root.tsx": {
+      "bytes": 923,
+      "sha256": "51c2df109015adc992b66b62f1ffc9801ad13f3dc47e4290de40cbe1b8e7809e"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/flight-path.ts": {
+      "bytes": 1240,
+      "sha256": "fab65d2d9cc0c4ca56f8a1422494d178c0e57f92a048a4720358d236ced980f0"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/assets/sample-river.geojson": {
+      "bytes": 6409,
+      "sha256": "2c9f6dd35ac4aed56580078046941235ed7e1a5d432a6549dbf7fea4e8d1e9be"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/references/3d-data-sources.md": {
+      "bytes": 1451,
+      "sha256": "23ac1acc576d49d599b33c812dc697b264ebe28849088c04e9827cb47b95275f"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/references/3d-flyover-architecture.md": {
+      "bytes": 7887,
+      "sha256": "09e1891cec991a246eec60dbcf76c4ea84c52e0bee14321471197703395d0a91"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/references/3d-troubleshooting.md": {
+      "bytes": 6741,
+      "sha256": "c803fe443f5bab1a50408f1f6aa6aded7913577eaefcb586b320c5a96c391bf2"
+    },
+    "remotion-markup/remotion-maps/techniques/cesium/scripts/prep-cesium-path.mjs": {
+      "bytes": 5561,
+      "sha256": "6dbb4d1ae3f5fef9f3f6eb23e2a6d58622750714bb847b088ff58a3533839463"
+    },
+    "remotion-markup/remotion-maps/techniques/mapbox/TECHNIQUE.md": {
+      "bytes": 13128,
+      "sha256": "8c434f680988a7212a9443ef9be0f62ef734f3d92af4dc47c11dad184677eec9"
+    },
+    "remotion-markup/remotion-maps/techniques/mapbox/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-markup/remotion-maps/techniques/maplibre/TECHNIQUE.md": {
+      "bytes": 13843,
+      "sha256": "8a13debcd2abfce415b5c8b7f323420ec77092d81ceb935853171ca9697b902c"
+    },
+    "remotion-markup/remotion-maps/techniques/maplibre/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/TECHNIQUE.md": {
+      "bytes": 4518,
+      "sha256": "72896873e63d675caaab765941dbb8d668f2790090a63b94e165f254b77ef887"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/CountryLabel.tsx": {
+      "bytes": 1849,
+      "sha256": "6be8c7d5b3435c8d933f05394ce5e807da5fc9fe0565db94ccaee6ac049df137"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/MapTilerVectorElement.ts": {
+      "bytes": 2183,
+      "sha256": "c8137792824323b9db997a88c3b923e8072cf2886cd90c38d84fdbbaad8258ed"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/RiverReveal.tsx": {
+      "bytes": 10830,
+      "sha256": "c3091e23dfd80178788d05c0bc43b17aee12aa4236d658f1a97c5acfb29a0f92"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/example-Root.tsx": {
+      "bytes": 1039,
+      "sha256": "e53677a7a207e37cbc04693eca8ccbab5f5f040efdc67a8b5c030c3913895e83"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/sample-data/country-meta.json": {
+      "bytes": 333134,
+      "sha256": "470a76cc5a45e58e7e1702cd80f74fcacf9d6e8b1ef7b05011f69853a999ba7b"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/sample-data/yarlung-flow.json": {
+      "bytes": 13082,
+      "sha256": "73a99e77a2ce31cb3ac39be8fe4775d53ecf127a56137b587fca090067dfbb96"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/assets/tokens.ts": {
+      "bytes": 1256,
+      "sha256": "29ae05eedb4988b5b8f2eb44d241b9c472533fb6ed05d4b33df3e71e0eabc71c"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/references/map-data-sources.md": {
+      "bytes": 4798,
+      "sha256": "b99680cbda8e7d70dc2cb1a8823f66247a21fc59d10c6dae0dd9ba24d2f15b80"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/references/map-explainer-architecture.md": {
+      "bytes": 6871,
+      "sha256": "e09de8a4d00ea9a82b992918ec4d0302ee18979b73e6c777d584a9743092344f"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/references/map-geo-prep.md": {
+      "bytes": 4098,
+      "sha256": "a97b1913f06195601889d4e090ad056db2fffb7b83918924c8cd92847b3829ef"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/references/render-stability.md": {
+      "bytes": 3639,
+      "sha256": "96650329df3a870743b6255123e93dba866a37eb1ab1d07c8275efff0d4dead9"
+    },
+    "remotion-markup/remotion-maps/techniques/maptiler/scripts/prep-geo.mjs": {
+      "bytes": 7553,
+      "sha256": "8265f56bd7c27a7d1a5fa528a77bbe1b29c6acc0e6730233583ca53e2632d490"
+    },
+    "remotion-markup/remotion-maps/techniques/static-map/TECHNIQUE.md": {
+      "bytes": 1138,
+      "sha256": "6fcb61a66084f4037a2fa0deb988500dd18e4ae7fa3c6923fb1142c1e521e9be"
+    },
+    "remotion-markup/sequencing.md": {
+      "bytes": 2726,
+      "sha256": "6c607eef126c024deeb56596d1d409a120d03df41da7f62a581c4ce5dbec4409"
+    },
+    "remotion-markup/sfx.md": {
+      "bytes": 1823,
+      "sha256": "1f72e2d8858505ae2d31fa89231432714f8bc34c36164d3c0cc43a290b3f826a"
+    },
+    "remotion-markup/silence-detection.md": {
+      "bytes": 2593,
+      "sha256": "7e777b141e339ade03bbdc1d002390e849781ebd3059183f60e1b24a91210f14"
+    },
+    "remotion-markup/text-highlights.md": {
+      "bytes": 1851,
+      "sha256": "70773952286e1aec2ba02f2f54d2d776dad7799d87744df03b0c75637ebfb21f"
+    },
+    "remotion-markup/timing-props.md": {
+      "bytes": 3632,
+      "sha256": "2046b3c50c022317046f6f796783ee025004a6e6258f06fbf51d3e81c6291146"
+    },
+    "remotion-markup/timing.md": {
+      "bytes": 3315,
+      "sha256": "48047e758b96aea519916479ede62b832bf51f982924978e091c37f569ab4bac"
+    },
+    "remotion-markup/transitions.md": {
+      "bytes": 7600,
+      "sha256": "198534edd0f7744a9e6fd37a149f1b2b294c770880e383af5d81a69f9939a2cb"
+    },
+    "remotion-markup/video-editing.md": {
+      "bytes": 6850,
+      "sha256": "1552ec758effb15a3fe428985a1461618f9033620acbcc328d464c9c57359de3"
+    },
+    "remotion-markup/voiceover.md": {
+      "bytes": 3934,
+      "sha256": "ababd9bca762eae434520e8eff73e031ef17102a18af103c9b18f625ae7b94e0"
+    },
+    "remotion-multimedia/REFERENCE.md": {
+      "bytes": 705,
+      "sha256": "e29aa045943cdad6cc71dc2c7c2b0df7f27b92402e6709f177ebe1afc36fb3b5"
+    },
+    "remotion-multimedia/agents/openai.yaml": {
+      "bytes": 317,
+      "sha256": "74e07a383bbf02808320ede199873d00a5fc976cb99d407056456b9abdfb0cb7"
+    },
+    "remotion-multimedia/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-multimedia/get-audio-duration.md": {
+      "bytes": 1507,
+      "sha256": "53b2e2ff232cae14ff9c0f7bb3ddf95c6137f7f1804cdaf50f7fe742befe0fd0"
+    },
+    "remotion-multimedia/get-video-dimensions.md": {
+      "bytes": 1797,
+      "sha256": "9d4cd07f11ce8fabda258b4d826e7c9b3d6827e87ee036a2c4c8a7a5aca7db76"
+    },
+    "remotion-multimedia/get-video-duration.md": {
+      "bytes": 1469,
+      "sha256": "6df955602cf7fb591ecb3f529fa9740d26ec1a4893a816aa08ea9b780379a8a0"
+    },
+    "remotion-render/REFERENCE.md": {
+      "bytes": 711,
+      "sha256": "4f7e905682d2b4ca4b33629ad7c3fcb406618b1d1df05aecc1b0519e0eefb8d1"
+    },
+    "remotion-render/agents/openai.yaml": {
+      "bytes": 286,
+      "sha256": "386699c32fdc63840ce7ff7412953831095dc4cdf60368648378c32895281290"
+    },
+    "remotion-render/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-render/transparent-videos.md": {
+      "bytes": 2267,
+      "sha256": "394ccda476e084522d544471fee92d7c65672e2cbaf2201a785c3dd5c74f31a4"
+    },
+    "remotion-saas/REFERENCE.md": {
+      "bytes": 1053,
+      "sha256": "42eaef12be7de128d01d394540eaf72f1c7c35abfda605eb50dbcf611bbdea0c"
+    },
+    "remotion-saas/agents/openai.yaml": {
+      "bytes": 283,
+      "sha256": "66be5403b3d10194c99e886372bbc1f4bdb2994fe560278bc7a39b4fbe7753a2"
+    },
+    "remotion-saas/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-saas/framework.md": {
+      "bytes": 908,
+      "sha256": "5e35ca3306ac15ad1df189789642cefbc62c59f4929372ffc10a67165d7b04b5"
+    },
+    "remotion-saas/player.md": {
+      "bytes": 942,
+      "sha256": "cc2f2944f1158d6ff1ddfc421a6a790f99ae86f54bbe0f0b18ef8bc7485e1b05"
+    },
+    "remotion-saas/rendering.md": {
+      "bytes": 3343,
+      "sha256": "b2f30b53e0191ef9e7f2da7360b36c0c5448ab5bdcf55575e1f7e55c5bbd257f"
+    },
+    "remotion-studio/REFERENCE.md": {
+      "bytes": 1611,
+      "sha256": "c3f91d99d1467241dadabf3832b706d0265e9c3b3c86e33b95deb80667860093"
+    },
+    "remotion-studio/agents/openai.yaml": {
+      "bytes": 237,
+      "sha256": "43afba3c8088614ece62949e33a7c8350092e76436bad87ad41e1a1ccaebea5d"
+    },
+    "remotion-studio/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "remotion-upgrade/REFERENCE.md": {
+      "bytes": 1930,
+      "sha256": "409e6767abeb56b440e2e711942ac86e12d5249bc8a266af0f4eb4f57635f0c8"
+    },
+    "remotion-upgrade/agents/openai.yaml": {
+      "bytes": 282,
+      "sha256": "3f3bc995d3531cfb5a714fd8f951954e118909b749217cc8418a235326d003cb"
+    },
+    "remotion-upgrade/assets/remotion-icon.svg": {
+      "bytes": 1303,
+      "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    }
+  },
+  "single_file_sha256": "eba1b288a5ac514e8a8cd638999508fc28569650df8fecd38fb85498195041b6"
+}

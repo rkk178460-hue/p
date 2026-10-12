@@ -1,0 +1,15 @@
+{
+  "name": "pulse-motion-study", "version": "1.0.0", "private": true, "type": "module",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "dev": "remotion studio src/Root.tsx",
+    "check": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "render": "remotion render src/Root.tsx Pulse out/pulse.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2",
+    "render:parallax": "remotion render src/Root.tsx ParallaxStudy out/parallax.mp4 --codec=h264 --crf=18 --concurrency=2",
+    "render:mask": "remotion render src/Root.tsx MaskTrailsStudy out/mask-trails.mp4 --codec=h264 --crf=18 --concurrency=2",
+    "qa": "remotion render src/Root.tsx Pulse out/qa --frames=0,120,290,300,420,590,600,720,899 --image-format=png --concurrency=2"
+  },
+  "dependencies": {"react": "19.1.0", "react-dom": "19.1.0", "remotion": "4.0.535", "@remotion/cli": "4.0.535"},
+  "devDependencies": {"typescript": "5.9.3", "@types/react": "19.1.0", "@types/react-dom": "19.1.0"}
+}

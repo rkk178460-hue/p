@@ -1,0 +1,79 @@
+{
+  "project": "2026 诺贝尔化学奖｜微小的不对称，如何被放大？",
+  "fps": 24,
+  "width": 1280,
+  "height": 720,
+  "scientific_note": "图形和增长曲线均为概念示意，不是对特定化学反应的结构式、实验曲线或生命起源的证明。",
+  "scenes": [
+    {
+      "id": "01", "duration": 12, "type": "mirror", "kicker": "OPENING QUESTION", "title": "化学，为什么\n会选择一只手？", "tagline": "两个互为镜像的分子，可能拥有不同命运。", "sections": ["左手和右手互为镜像。", "多数情况下，无论怎样旋转，\n它们都无法完全重合。"],
+      "narration": "伸出双手。它们的结构相似，却无法通过旋转完全重合。许多分子也有这种性质：它们存在两种互为镜像的形态。这个细小区别，影响着生命中的化学反应。"
+    },
+    {
+      "id": "02", "duration": 16, "type": "laureates", "kicker": "THE 2026 CHEMISTRY PRIZE", "title": "2026 年诺贝尔\n化学奖", "tagline": "Henri B. Kagan  ×  Kenso Soai", "sections": ["10 月 7 日，瑞典皇家科学院宣布获奖者。", "获奖理由：不对称有机合成中的\n非线性效应与自催化。"],
+      "narration": "二零二六年十月七日，诺贝尔化学奖授予法国化学家亨利·卡冈和日本化学家曾井健三。官方表彰他们发现了不对称有机合成中的非线性效应与自催化现象。"
+    },
+    {
+      "id": "03", "duration": 17, "type": "mirror", "kicker": "01 / CHIRALITY", "title": "什么是分子\n的手性？", "tagline": "Enantiomers  ·  对映异构体", "sections": ["当一个分子和它的镜像无法重合，\n就称它具有手性。", "两种镜像形态称为对映异构体。"],
+      "narration": "在有机化学里，一些分子拥有手性。两种结构互为镜像，却不能重叠，叫做对映异构体。右侧是四个不同基团围绕一个中心的抽象示意，不代表某一种具体药物。"
+    },
+    {
+      "id": "04", "duration": 18, "type": "life", "kicker": "02 / LIFE", "title": "生命的分子\n偏爱一种方向", "tagline": "Homochirality  ·  同手性", "sections": ["蛋白质主要使用 L-氨基酸。", "DNA、RNA 的糖骨架使用 D 型糖。"],
+      "narration": "生命具有惊人的方向性。我们的蛋白质几乎都由左旋构型的L型氨基酸构成，而核酸的糖骨架使用D型糖。这里的L和D表示构型，不等于光线旋转的方向。为什么生命如此偏好单一手性，是一个深刻的问题。"
+    },
+    {
+      "id": "05", "duration": 18, "type": "receptor", "kicker": "03 / BIOLOGICAL RECOGNITION", "title": "镜像分子，\n效果可能不同", "tagline": "Biological recognition  ·  生物识别", "sections": ["受体和酶本身也具有手性。", "一种构型可能更容易结合，\n另一种则可能结合较弱。"],
+      "narration": "药物需要和人体中的蛋白质、受体或者酶相互作用。这些生物结构自身具有手性，所以分子的左右版本可能表现出不同的结合能力和生物活性。科学家需要控制最终合成产物的手性。"
+    },
+    {
+      "id": "06", "duration": 18, "type": "bars", "kicker": "04 / THE ORIGINAL PROBLEM", "title": "对称的起点，\n常得到均等的结果", "tagline": "50%  :  50%", "sections": ["没有手性影响的理想对称条件下，\n两种产物通常以相同比例形成。", "但生命和药物合成常需要更偏向一边。"],
+      "narration": "如果反应条件本身完全对称，而且没有其他手性影响，两种镜像产物通常会以相同的量形成。就像连续抛出一枚公平的硬币，结果没有天然偏向。问题是，化学家能否把这个比例向一侧推动？"
+    },
+    {
+      "id": "07", "duration": 20, "type": "ee", "kicker": "05 / A USEFUL MEASURE", "title": "如何测量\n“偏向哪一边”？", "tagline": "Enantiomeric excess  ·  ee", "sections": ["ee = |Nᴿ − Nˢ| / (Nᴿ + Nˢ) × 100%", "示例：55% 对 45%，则 ee = 10%。"],
+      "narration": "科学家用一个数衡量两种对映体的不平衡程度，叫作对映体过量，缩写是ee。如果右手型占百分之五十五，左手型占百分之四十五，差额就是百分之十，ee等于百分之十。若完全各半，ee为零；只剩一种时，ee为百分之百。"
+    },
+    {
+      "id": "08", "duration": 21, "type": "curve", "kicker": "06 / KAGAN, 1986", "title": "第一道突破：\n非线性效应", "tagline": "Henri B. Kagan  ·  1986", "sections": ["催化剂的手性偏向与产物的偏向，\n不一定按同一个比例变化。", "小小的起始偏向，能换来更明显的结果。"],
+      "narration": "一九八六年，卡冈展示了不对称催化中的非线性效应。催化剂中两种手性形式的比例，与产物中两种手性形式的比例，不必是一条简单的直线关系。在特定体系中，起始的微小不平衡能够获得更强的产物选择性。"
+    },
+    {
+      "id": "09", "duration": 21, "type": "networks", "kicker": "07 / WHY NON-LINEAR?", "title": "催化剂之间，\n也会相互影响", "tagline": "Interactions can change selectivity", "sections": ["不同手性催化剂可能相互缔合，\n形成活性不同的物种。", "这使“输入比例 → 输出比例”不再线性。"],
+      "narration": "为什么会出现非线性？在一些体系里，催化剂分子之间会结合，生成催化活性不同的复合物。混合比例一变，有效催化物种的分布也会变化。具体机制随体系而异，因此这里展示的是通用概念图，并非卡冈实验的精确机理。"
+    },
+    {
+      "id": "10", "duration": 20, "type": "feedback", "kicker": "08 / SOAI, 1995", "title": "第二道突破：\n产物催化自身生成", "tagline": "Asymmetric autocatalysis  ·  自催化", "sections": ["反应产生某种手性分子后，\n这个产物反过来加速同类产物形成。", "反应获得了“自我复制式”的反馈。"],
+      "narration": "曾井健三研究的方向更加特别：让反应产物自己成为催化剂，帮助生成更多相同手性的产物。九十年代，他和团队报告了关键的非对称自催化反应。与普通催化不同，这里产物会参与推动自己继续产生。"
+    },
+    {
+      "id": "11", "duration": 22, "type": "amplify", "kicker": "09 / SYMMETRY BREAKING", "title": "微小的差别，\n可以反复放大", "tagline": "A feedback mechanism", "sections": ["起点：50.1%  对  49.9%", "经过正反馈，优势一方可能逐步占据主导。\n右侧是概念模型，不是实验数据。"],
+      "narration": "假设初始混合物只有百分之零点二的差距，哪一侧略微领先？在具有合适反馈机制的体系里，领先的一侧会生成更多能继续催化自身形成的产物，使不对称逐步放大。这是理解自发对称破缺的关键直觉。图上的数字只用来解释机制，不是获奖实验的实测轨迹。"
+    },
+    {
+      "id": "12", "duration": 20, "type": "timeline", "kicker": "10 / THE MILESTONES", "title": "从偏向一边，\n到几乎只剩一边", "tagline": "1986  →  1995  →  2003", "sections": ["1986：发现不对称催化非线性效应。", "1995：报告关键自催化反应。\n2003：展示高度同手性的结果。"],
+      "narration": "三个年份连成了一条清晰的科学路线。一九八六年，卡冈发现非线性效应；一九九五年，曾井团队报告不对称自催化反应；二零零三年，曾井进一步实现了在特定实验条件下几乎完全单一的手性产物。"
+    },
+    {
+      "id": "13", "duration": 19, "type": "life", "kicker": "11 / ORIGIN OF LIFE", "title": "这是否破解了\n生命起源之谜？", "tagline": "A mechanism ≠ a historical proof", "sections": ["它证明单一手性可以通过化学反馈形成。", "但没有证明早期地球必然使用这一反应。"],
+      "narration": "这是理解生命同手性起源的重要进展，但有一个必须澄清的边界：证明某一种反应能自发放大手性，不等于证明生命的化学起源就是通过曾井反应实现的。该反应的原料和条件与早期地球环境仍有重要差异。"
+    },
+    {
+      "id": "14", "duration": 21, "type": "applications", "kicker": "12 / WHY IT MATTERS", "title": "它改变了\n合成化学的思路", "tagline": "Selectivity  ·  Medicines  ·  Materials", "sections": ["理解、利用手性选择性，\n是药物与精细化学品合成的重要基础。", "这项奖奖励的是可迁移的科学原理。"],
+      "narration": "精确控制分子的三维构型，对制药、香料、农化品和先进材料都十分重要。需要强调的是，并非所有这些工业产品都直接使用曾井反应。获奖工作的广泛价值，在于人们获得了理解和设计手性放大体系的新方法。"
+    },
+    {
+      "id": "15", "duration": 18, "type": "compare", "kicker": "13 / THE CORE DISTINCTION", "title": "他们分别\n解决了什么？", "tagline": "Nonlinear effect   /   Autocatalysis", "sections": ["Kagan：偏向可以被非线性增强。", "Soai：产物自身可参与并放大偏向。"],
+      "narration": "一句话区分两项贡献：卡冈让我们理解，催化剂很小的手性偏向，可能经过非线性机制放大为更大的产物偏向；曾井证明，在特定自催化体系里，产物能够帮助生成更多同手性的产物，使优势持续累积。"
+    },
+    {
+      "id": "16", "duration": 16, "type": "final", "kicker": "THE NOBEL PRIZE IN CHEMISTRY 2026", "title": "从微小偏差\n到鲜明的方向", "tagline": "当化学反应具有反馈，微弱的不对称也有了未来。", "sections": ["2026 · Henri B. Kagan / Kenso Soai", "资料：瑞典皇家科学院、ACS、Nature\n图解为原创概念示意。"],
+      "narration": "二零二六年诺贝尔化学奖向我们展示，分子世界中看似微不足道的差异，可以通过反应网络被持续放大。而理解这种放大，正是走向更精确化学合成的一步。"
+    }
+  ],
+  "sources": [
+    {"title": "Royal Swedish Academy of Sciences / Award announcement", "url": "https://www.kva.se/en/news/the-nobel-prize-in-chemistry-2026/", "date": "2026-10-07"},
+    {"title": "American Chemical Society / Award statement", "url": "https://www.acs.org/pressroom/newsreleases/2026/october/acs-president-comments-on-award-of-2026-nobel-prize-in-chemistry.html", "date": "2026-10-07"},
+    {"title": "Nature / Chemistry Nobel analysis", "url": "https://www.nature.com/articles/d41586-026-03093-0", "date": "2026-10-08"},
+    {"title": "American Chemical Society / Headline Science", "url": "https://www.acs.org/pressroom/headline-science/chem-nobel-2026.html", "date": "2026-10-07"}
+  ]
+}

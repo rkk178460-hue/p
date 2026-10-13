@@ -4,15 +4,19 @@
     "commit": "7ba4dcf8ebe1626b00baa41e1f2478113719b60b",
     "version": "4.0.535"
   },
-  "file_count": 144,
+  "file_count": 146,
   "files": {
     "SKILL.md": {
-      "bytes": 7133,
-      "sha256": "3df15defb8d9592c450c96418bd425850286dc15065d02f1a6088d3915673f53"
+      "bytes": 7419,
+      "sha256": "45545ecb9d04ea1e8ca3d1341f4e8e7093136244778cfde33499162948744585"
     },
     "agents/openai.yaml": {
       "bytes": 487,
       "sha256": "9faaca01450d835596e2625ca31ad2b66e0843516c0442b449bd573944025164"
+    },
+    "assets/continuous-camera.mjs": {
+      "bytes": 2162,
+      "sha256": "3435dabc478f201776c7f009b473d3b1c08d0b834be7a9703799ba1ab296b3f5"
     },
     "assets/icon.svg": {
       "bytes": 1738,
@@ -21,6 +25,10 @@
     "assets/remotion-icon.svg": {
       "bytes": 1303,
       "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
+    },
+    "references/continuous-camera.md": {
+      "bytes": 5141,
+      "sha256": "32c7ae7d078db49a575ea3695f2bda4b3a007f55fee23cd0f681c6767b8cb31d"
     },
     "references/github-practice.md": {
       "bytes": 4048,
@@ -583,5 +591,5 @@
       "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
     }
   },
-  "single_file_sha256": "eba1b288a5ac514e8a8cd638999508fc28569650df8fecd38fb85498195041b6"
+  "single_file_sha256": "70404bfe937b6c075fc17abf53280f923d383c97f46f241e79ac2a3c502a7377"
 }

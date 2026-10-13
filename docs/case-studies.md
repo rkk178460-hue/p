@@ -13,7 +13,17 @@
 
 这两个小样复现动画机制，重新编写 Canvas 代码和几何素材；没有搬运原片、音乐、标志或像素图。视差源实现还支持像素吸附，本次仅实现连续位移。标志源使用合成掩码，本次以局部 `clip()` 实现等价的矩形裁切；中心图案改成原创方框。
 
-## 已读源码，留作后续扩展
+## 第二轮：连续镜头与规模揭示
+
+来源：[Liamrjohnston/remotion-motion-graphics-skill](https://github.com/Liamrjohnston/remotion-motion-graphics-skill)，固定提交 `b860c7921f2220b9e2a84e815ba0ae7b10858f08`。核对了 [cinematic-camera 的相机代码](https://github.com/Liamrjohnston/remotion-motion-graphics-skill/blob/b860c7921f2220b9e2a84e815ba0ae7b10858f08/skills/cinematic-camera/SKILL.md)、[案例机制索引](https://github.com/Liamrjohnston/remotion-motion-graphics-skill/blob/b860c7921f2220b9e2a84e815ba0ae7b10858f08/skills/motion-graphics/references/approved-references.md) 和 [one-click-wall 参考帧](https://github.com/Liamrjohnston/remotion-motion-graphics-skill/blob/b860c7921f2220b9e2a84e815ba0ae7b10858f08/skills/motion-graphics/assets/references/tsenta-one-click-wall-contact-sheet.jpg)。代码与指南为 MIT，保留 `licenses/promptible-MIT.txt`；参考帧用于检查，没有复制品牌界面到本项目。
+
+`Vector` 复现共享世界、镜头停留/移动/停留，以及从局部动作拉远到完整结构的机制。新增的相机模块由本项目重写，采用共享缓动进度与对数缩放，提供双向坐标投影。影片使用原创环形结构、传递路径和六角几何场；并非原片逐像素复刻，也不是产品性能演示。
+
+移植时发现：镜头先到达、对象稍后才显现，会产生空镜头。因此把目的地的低亮度轮廓提前放入同一世界，主体再随触发事件激活。结尾把世界状态与镜头一起固定；相关验证进入测试和 `references/continuous-camera.md`。
+
+补查运动中点与动作完成帧还发现连接端点不能只估算物体边界。已改用真实六角节点生成终点，并增加连接完整性测试。最后验收覆盖 20 个关键帧与编码后的实际画面。
+
+## 继续保留的光照扩展参考
 
 [Deferred Lights](https://youtu.be/R6vQ9VmMz2w) 的 [lightComposite.tsx](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/deferred-lighting/src/scenes/lightComposite.tsx) 把光照拆成衰减、颜色、材质相乘和体积叠加，再按时间提示组合。首版提取“让参数变化与画面变化一一对应”的讲解方式，尚未移植其着色器或三维管线。PULSE 的中心光点是装饰性 Canvas 效果，不能称为真实体积光。
 

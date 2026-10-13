@@ -16,6 +16,10 @@ def anchor(path):
     return 'bundle-' + hashlib.sha256(path.encode()).hexdigest()[:16]
 
 def build():
+    camera_asset = SKILL / 'assets/continuous-camera.mjs'
+    camera_example = ROOT / 'examples/pulse/src/camera.js'
+    if camera_asset.exists() and camera_example.exists() and camera_asset.read_bytes() != camera_example.read_bytes():
+        raise ValueError('Sync examples/pulse/src/camera.js with assets/continuous-camera.mjs first')
     files = sorted(p for p in SKILL.rglob('*') if p.is_file())
     paths = {p.relative_to(SKILL).as_posix() for p in files}
     records = {p.relative_to(SKILL).as_posix(): {
@@ -53,7 +57,7 @@ def build():
                 body = body[metadata.end():]
             parts.append(relink(body, rel))
         else:
-            lang = {'.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.tsx': 'tsx',
+            lang = {'.py': 'python', '.js': 'javascript', '.mjs': 'javascript', '.ts': 'typescript', '.tsx': 'tsx',
                     '.yaml': 'yaml', '.svg': 'xml'}.get(p.suffix, '')
             runs = [len(x) for x in re.findall(r'`+', body)]
             fence = '`' * max([3] + [x + 1 for x in runs])

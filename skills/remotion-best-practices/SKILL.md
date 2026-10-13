@@ -42,8 +42,13 @@ For procedural animation or open-source case recreation, also load
 ports, periodic layers and scoped masks. Keep mechanism recreation distinct
 from original-film reproduction; report exactly what was inspected and rendered.
 
+For a shared world with camera travel or a scale reveal, load
+[Continuous camera](./references/continuous-camera.md) and copy its pure camera
+asset into the project. Plan holds around actions, inspect destinations before
+export, and verify focus projection and the final stable frame.
+
 Use the repository's `examples/pulse` as a tested minimal starting point when
-available. Its 15-second main clip and two isolated studies need no external
+available. Its two 15-second clips and two isolated studies need no external
 media or service credentials. Copy the project before changing it for a new task.
 
 For new videos and substantial edits, load [Production workflow](./references/production-workflow.md). Apply its storyboard, editable-shot, and visual-feedback loop alongside the relevant official reference. Make routine creative decisions within the user's brief; do not add mandatory approval rounds.

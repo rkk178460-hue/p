@@ -1,10 +1,11 @@
 # PULSE · 代码视频首版
 
-15 秒程序动效，全量 Remotion skill，以及从公开源码移植的视差与遮罩小样。
+两段 15 秒程序动效，全量 Remotion skill，以及从公开源码移植的视差与遮罩小样。
 
 ## 直接查看
 
 - [PULSE · 15 秒 MP4](media/pulse-15s.mp4)
+- [VECTOR · 连续镜头 15 秒 MP4](media/vector-15s.mp4)
 - [视差小样 · 6 秒](media/parallax-6s.mp4)
 - [遮罩小样 · 4 秒](media/mask-trails-4s.mp4)
 - [全量 skill 单文件](dist/remotion-best-practices-full.md)
@@ -12,6 +13,8 @@
 - [开源案例、原片与复现范围](docs/case-studies.md)
 
 ![PULSE 关键帧](media/contact-sheet.jpg)
+
+![VECTOR 关键帧](media/vector-contact-sheet.jpg)
 
 ## 运行与导出
 
@@ -24,7 +27,7 @@ npm ci
 npm run dev
 ```
 
-打开终端实际打印的 Studio 地址，选择 `Pulse`、`ParallaxStudy` 或 `MaskTrailsStudy`。
+打开终端实际打印的 Studio 地址，选择 `Pulse`、`Vector`、`ParallaxStudy` 或 `MaskTrailsStudy`。
 
 ```bash
 npm run check
@@ -33,13 +36,16 @@ npm run qa
 npm run render
 npm run render:parallax
 npm run render:mask
+npm run qa:vector
+npm run render:vector
 cd ../..
 python scripts/verify_video.py examples/pulse/out/pulse.mp4
 python scripts/verify_video.py examples/pulse/out/parallax.mp4 --duration 6
 python scripts/verify_video.py examples/pulse/out/mask-trails.mp4 --duration 4
+python scripts/verify_video.py examples/pulse/out/vector.mp4
 ```
 
-输出到 `examples/pulse/out/`，主片为 1920×1080、60 fps、900 帧、H.264、无声。两段附加小样分别 360 帧和 240 帧。无需 API key、付费生成、在线媒体或三维模型。
+输出到 `examples/pulse/out/`，PULSE 与 VECTOR 均为 1920×1080、60 fps、900 帧、H.264、无声。两段附加小样分别 360 帧和 240 帧。无需 API key、付费生成、在线媒体或三维模型。
 
 若已有兼容浏览器，可给渲染命令追加 `--browser-executable=/absolute/path/to/chrome-headless-shell`。内存不足可将 `--concurrency=2` 改为 1。依赖只保证此固定版本；更新时按 skill 的 upgrade 模块核对。
 
@@ -58,7 +64,7 @@ python scripts/build_skill.py --check
 
 ## 示例结构与扩展
 
-`src/Root.tsx` 注册三个可独立预览的 composition，并等待本地字体。`draw.js` 组合 `scenes/` 中的三个阶段；`palette.js` 集中管理色彩；`motion.js` 提供公共时间和循环运算；`studies.js` 隔离两种移植机制。画布元素作为同一程序模板编辑，不支持逐个粒子的 Studio 源码编辑。
+`src/Root.tsx` 注册四个可独立预览的 composition，并等待本地字体。`draw.js` 组合 `scenes/` 中的三个阶段；`palette.js` 集中管理色彩；`motion.js` 提供公共时间和循环运算；`studies.js` 隔离两种移植机制。`vector.js` 描绘同一世界并使用 `camera.js` 的秒级关键帧。画布元素作为同一程序模板编辑，不支持逐个粒子的 Studio 源码编辑。
 
 | 时间 | 主片内容 |
 | --- | --- |
@@ -68,10 +74,12 @@ python scripts/build_skill.py --check
 
 首次修改从颜色、速度或粒子数开始；通过独立 composition 检查机制。新增实质性场景时拆成独立组件并注册自己的时间轴；需要三维、声音或字幕时按对应官方模块添加，保持 Remotion 包版本一致。
 
-验收见 [标准](docs/acceptance.md) 与 [实际结果](docs/validation.md)。算法与帧参数可复现；不同浏览器、系统或编码器的像素和 MP4 字节不承诺完全相同。
+VECTOR 从近景脉冲开始，沿连接路径移动，显现六角场，再拉远看见完整结构。最后保留稳定尾帧。修改 `CAMERA_KEYS` 可调整焦点、缩放与停留时间。`examples/pulse` 可以独立复制运行；相机副本与 skill 的资源由包生成脚本检查一致性。
+
+验收见 [标准](docs/acceptance.md)、[首版结果](docs/validation.md) 与 [第二轮结果](docs/validation-v2.md)。算法与帧参数可复现；不同浏览器、系统或编码器的像素和 MP4 字节不承诺完全相同。
 
 ## 来源与许可
 
-本项目自编示例和工具采用 [MIT](LICENSE)。Motion Canvas 的机制来源保留 [MIT 通知](licenses/motion-canvas-MIT.txt)。字体保留 [原许可](licenses/dejavu-font.txt)。官方 Remotion skill 文件保留上游归属；固定快照未提供独立 LICENSE，不能据本项目 MIT 推断其再许可。Remotion 运行时采用自身许可，参考 [核对时的条款](licenses/remotion-runtime-license.md) 与官方当前条款。
+本项目自编示例和工具采用 [MIT](LICENSE)。Motion Canvas 的机制来源保留 [MIT 通知](licenses/motion-canvas-MIT.txt)，连续镜头来源保留 [Promptible MIT 通知](licenses/promptible-MIT.txt)。字体保留 [原许可](licenses/dejavu-font.txt)。官方 Remotion skill 文件保留上游归属；固定快照未提供独立 LICENSE，不能据本项目 MIT 推断其再许可。Remotion 运行时采用自身许可，参考 [核对时的条款](licenses/remotion-runtime-license.md) 与官方当前条款。
 
 本仓库公开发布的是源码、参考资料和本地程序渲染。未复制案例音乐、品牌素材或原视频；案例移植的具体范围见来源记录。

@@ -14,5 +14,13 @@
   "pulse-15s.mp4": {
     "bytes": 12431100,
     "sha256": "31c1e607dc76437b5f955a1b612ca5ecdab53cf52fee4dd00ef38268767f1d02"
+  },
+  "vector-15s.mp4": {
+    "bytes": 2642133,
+    "sha256": "1f111342506a20c7b9b94485e0da1ef5103ef051fae5e4be3172a7f6fe2ab356"
+  },
+  "vector-contact-sheet.jpg": {
+    "bytes": 54979,
+    "sha256": "39f06c72ff4b58cd821bcfcd814e9b62da5a8decb9b32025fef717c65d6ad3b4"
   }
 }

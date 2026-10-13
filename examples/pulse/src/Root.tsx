@@ -2,6 +2,7 @@ import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {Composition, Folder, registerRoot, useCurrentFrame, useVideoConfig, delayRender, continueRender, cancelRender, staticFile} from 'remotion';
 import {draw} from './draw';
 import {drawParallax, drawMaskTrails} from './studies';
+import {drawVector} from './vector';
 
 type Painter = (ctx: CanvasRenderingContext2D, frame: number, width: number, height: number, fps: number) => void;
 const CanvasScene = ({paint}: {paint: Painter}) => {
@@ -28,8 +29,10 @@ const CanvasScene = ({paint}: {paint: Painter}) => {
 const Pulse = () => <CanvasScene paint={draw}/>;
 const ParallaxStudy = () => <CanvasScene paint={drawParallax}/>;
 const MaskTrailsStudy = () => <CanvasScene paint={drawMaskTrails}/>;
+const Vector = () => <CanvasScene paint={drawVector}/>;
 const Root = () => <>
   <Composition id="Pulse" component={Pulse} durationInFrames={900} fps={60} width={1920} height={1080}/>
+  <Composition id="Vector" component={Vector} durationInFrames={900} fps={60} width={1920} height={1080}/>
   <Folder name="Studies">
     <Composition id="ParallaxStudy" component={ParallaxStudy} durationInFrames={360} fps={60} width={1920} height={1080}/>
     <Composition id="MaskTrailsStudy" component={MaskTrailsStudy} durationInFrames={240} fps={60} width={1920} height={1080}/>

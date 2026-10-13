@@ -16,6 +16,7 @@
 此 GitHub 路径记录已完成的制作与事实校对。**可执行源代码、分镜 JSON、字幕、校验脚本和最终 MP4** 已作为本次 ChatGPT 项目的下载归档交付；当前没有向 GitHub 上传大型视频或二进制文件。归档解包后可运行：
 
 ```bash
+cd videos/nobel-chemistry-2026
 python -m pip install -r requirements.txt
 python render.py --preview
 python render.py --output chemistry-nobel-2026.mp4
@@ -36,3 +37,14 @@ python verify.py chemistry-nobel-2026.mp4
 ## 验收
 
 共 7128 帧；`ffprobe` 实测时长 297.000 秒；编码 H.264 yuv420p + AAC；1280×720 / 24 fps；`ffmpeg -xerror` 全片解码成功。所有图表、动画和语音可通过源代码再次生成。
+## 源码和渲染路线
+
+- [Python/Pillow 逐帧渲染源码](render.py)
+- [16 场分镜与事实参考](storyboard.json)
+- [中文字幕 SRT](subtitles.zh.srt)
+- [自动验收脚本](verify.py)
+- [固定依赖范围](requirements.txt)
+- [仓库提供的代码视频制作 Skill](../../skills/remotion-best-practices/SKILL.md)
+
+**架构说明：** 本片使用 Pillow + FFmpeg 纯代码逐帧合成，并非 Remotion 的 composition；Skill 中的编排、分镜、帧验收等原则可用于新项目，但不能将本片误称为 Remotion 渲染。请安装 Noto CJK 与 DejaVu 字体。当前 `render.py` 使用 Linux 下的字体路径常量；如果使用 macOS 或 Windows，请更改文件头部的三个 FONT_* 路径，使它们指向本地支持中文的字体文件。完整渲染会处理 7128 张 720p 帧，预计耗时取决于 CPU 与编码器。
+

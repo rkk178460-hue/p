@@ -16,10 +16,11 @@ def anchor(path):
     return 'bundle-' + hashlib.sha256(path.encode()).hexdigest()[:16]
 
 def build():
-    camera_asset = SKILL / 'assets/continuous-camera.mjs'
-    camera_example = ROOT / 'examples/pulse/src/camera.js'
-    if camera_asset.exists() and camera_example.exists() and camera_asset.read_bytes() != camera_example.read_bytes():
-        raise ValueError('Sync examples/pulse/src/camera.js with assets/continuous-camera.mjs first')
+    for asset, example in [('continuous-camera.mjs', 'camera.js'), ('path-geometry.mjs', 'path-geometry.js')]:
+        source = SKILL / 'assets' / asset
+        copied = ROOT / 'examples/pulse/src' / example
+        if source.exists() and copied.exists() and source.read_bytes() != copied.read_bytes():
+            raise ValueError(f'Sync examples/pulse/src/{example} with assets/{asset} first')
     files = sorted(p for p in SKILL.rglob('*') if p.is_file())
     paths = {p.relative_to(SKILL).as_posix() for p in files}
     records = {p.relative_to(SKILL).as_posix(): {

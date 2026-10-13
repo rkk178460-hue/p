@@ -1,11 +1,12 @@
 # PULSE · 代码视频首版
 
-两段 15 秒程序动效，全量 Remotion skill，以及从公开源码移植的视差与遮罩小样。
+三段 15 秒程序动效，全量 Remotion skill，以及从公开源码移植的视差与遮罩小样。
 
 ## 直接查看
 
 - [PULSE · 15 秒 MP4](media/pulse-15s.mp4)
 - [VECTOR · 连续镜头 15 秒 MP4](media/vector-15s.mp4)
+- [FORM · SVG 几何变形 15 秒 MP4](media/form-15s.mp4)
 - [视差小样 · 6 秒](media/parallax-6s.mp4)
 - [遮罩小样 · 4 秒](media/mask-trails-4s.mp4)
 - [全量 skill 单文件](dist/remotion-best-practices-full.md)
@@ -15,6 +16,8 @@
 ![PULSE 关键帧](media/contact-sheet.jpg)
 
 ![VECTOR 关键帧](media/vector-contact-sheet.jpg)
+
+![FORM 关键帧](media/form-contact-sheet.jpg)
 
 ## 运行与导出
 
@@ -27,7 +30,7 @@ npm ci
 npm run dev
 ```
 
-打开终端实际打印的 Studio 地址，选择 `Pulse`、`Vector`、`ParallaxStudy` 或 `MaskTrailsStudy`。
+打开终端实际打印的 Studio 地址，选择 `Pulse`、`Vector`、`Form`、`ParallaxStudy` 或 `MaskTrailsStudy`。
 
 ```bash
 npm run check
@@ -38,14 +41,17 @@ npm run render:parallax
 npm run render:mask
 npm run qa:vector
 npm run render:vector
+npm run qa:form
+npm run render:form
 cd ../..
 python scripts/verify_video.py examples/pulse/out/pulse.mp4
 python scripts/verify_video.py examples/pulse/out/parallax.mp4 --duration 6
 python scripts/verify_video.py examples/pulse/out/mask-trails.mp4 --duration 4
 python scripts/verify_video.py examples/pulse/out/vector.mp4
+python scripts/verify_video.py examples/pulse/out/form.mp4
 ```
 
-输出到 `examples/pulse/out/`，PULSE 与 VECTOR 均为 1920×1080、60 fps、900 帧、H.264、无声。两段附加小样分别 360 帧和 240 帧。无需 API key、付费生成、在线媒体或三维模型。
+输出到 `examples/pulse/out/`，PULSE、VECTOR 与 FORM 均为 1920×1080、60 fps、900 帧、H.264、无声。两段附加小样分别 360 帧和 240 帧。无需 API key、付费生成、在线媒体或三维模型。
 
 若已有兼容浏览器，可给渲染命令追加 `--browser-executable=/absolute/path/to/chrome-headless-shell`。内存不足可将 `--concurrency=2` 改为 1。依赖只保证此固定版本；更新时按 skill 的 upgrade 模块核对。
 
@@ -64,7 +70,7 @@ python scripts/build_skill.py --check
 
 ## 示例结构与扩展
 
-`src/Root.tsx` 注册四个可独立预览的 composition，并等待本地字体。`draw.js` 组合 `scenes/` 中的三个阶段；`palette.js` 集中管理色彩；`motion.js` 提供公共时间和循环运算；`studies.js` 隔离两种移植机制。`vector.js` 描绘同一世界并使用 `camera.js` 的秒级关键帧。画布元素作为同一程序模板编辑，不支持逐个粒子的 Studio 源码编辑。
+`src/Root.tsx` 注册五个可独立预览的 composition，使用公共 `font.ts` 等待本地字体。`draw.js` 组合 `scenes/` 中的三个阶段；`palette.js` 集中管理色彩；`motion.js` 提供公共时间和循环运算；`studies.js` 隔离两种移植机制。`vector.js` 使用 `camera.js` 的秒级关键帧，`Form.tsx` 使用 `form-geometry.js` 与 `path-geometry.js` 生成 SVG。程序生成的元素作为同一模板编辑，不支持逐个粒子的 Studio 源码编辑。
 
 | 时间 | 主片内容 |
 | --- | --- |
@@ -76,7 +82,9 @@ python scripts/build_skill.py --check
 
 VECTOR 从近景脉冲开始，沿连接路径移动，显现六角场，再拉远看见完整结构。最后保留稳定尾帧。修改 `CAMERA_KEYS` 可调整焦点、缩放与停留时间。`examples/pulse` 可以独立复制运行；相机副本与 skill 的资源由包生成脚本检查一致性。
 
-验收见 [标准](docs/acceptance.md)、[首版结果](docs/validation.md) 与 [第二轮结果](docs/validation-v2.md)。算法与帧参数可复现；不同浏览器、系统或编码器的像素和 MP4 字节不承诺完全相同。
+FORM 用一条闭合路径演示描边、形状变换和三维投影。修改 `SHAPES` 可换目标几何，但应保持采样数量、方向与锚点对应。最后的空间曲线采用近似线条遮挡；项目未模拟实体材质或光照。几何副本也由包生成脚本检查一致性。
+
+验收见 [标准](docs/acceptance.md)、[首版结果](docs/validation.md)、[第二轮结果](docs/validation-v2.md) 与 [第三轮结果](docs/validation-v3.md)。算法与帧参数可复现；不同浏览器、系统或编码器的像素和 MP4 字节不承诺完全相同。
 
 ## 来源与许可
 

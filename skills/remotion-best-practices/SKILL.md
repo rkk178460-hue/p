@@ -47,8 +47,13 @@ For a shared world with camera travel or a scale reveal, load
 asset into the project. Plan holds around actions, inspect destinations before
 export, and verify focus projection and the final stable frame.
 
+For SVG stroke reveals, shape morphs or projected 3D wire curves, load
+[Path morph and projection](./references/path-morph.md). Match samples, winding
+and anchors; guard the near plane; keep depth approximation explicit. Reuse the
+pure geometry asset and inspect transition and crossing frames.
+
 Use the repository's `examples/pulse` as a tested minimal starting point when
-available. Its two 15-second clips and two isolated studies need no external
+available. Its three 15-second clips and two isolated studies need no external
 media or service credentials. Copy the project before changing it for a new task.
 
 For new videos and substantial edits, load [Production workflow](./references/production-workflow.md). Apply its storyboard, editable-shot, and visual-feedback loop alongside the relevant official reference. Make routine creative decisions within the user's brief; do not add mandatory approval rounds.

@@ -47,8 +47,13 @@ For a shared world with camera travel or a scale reveal, load
 asset into the project. Plan holds around actions, inspect destinations before
 export, and verify focus projection and the final stable frame.
 
+For SVG stroke reveals, shape morphs or projected 3D wire curves, load
+[Path morph and projection](#bundle-cb7ac7137db97d84). Match samples, winding
+and anchors; guard the near plane; keep depth approximation explicit. Reuse the
+pure geometry asset and inspect transition and crossing frames.
+
 Use the repository's `examples/pulse` as a tested minimal starting point when
-available. Its two 15-second clips and two isolated studies need no external
+available. Its three 15-second clips and two isolated studies need no external
 media or service credentials. Copy the project before changing it for a new task.
 
 For new videos and substantial edits, load [Production workflow](#bundle-994d056b89abf823). Apply its storyboard, editable-shot, and visual-feedback loop alongside the relevant official reference. Make routine creative decisions within the user's brief; do not add mandatory approval rounds.
@@ -165,9 +170,11 @@ This single-file edition includes every text resource below. Follow the linked r
 - [agents/openai.yaml](#bundle-deb9755d273fc668)
 - [assets/continuous-camera.mjs](#bundle-b6c9de762f945f24)
 - [assets/icon.svg](#bundle-d0786480a462432e)
+- [assets/path-geometry.mjs](#bundle-ae3a606a9297c812)
 - [assets/remotion-icon.svg](#bundle-4729d3a799088568)
 - [references/continuous-camera.md](#bundle-6610a0b962471b6a)
 - [references/github-practice.md](#bundle-f022dae131ac0fc4)
+- [references/path-morph.md](#bundle-cb7ac7137db97d84)
 - [references/production-workflow.md](#bundle-994d056b89abf823)
 - [remotion-captions/REFERENCE.md](#bundle-2d5f294b1d586e2e)
 - [remotion-captions/agents/openai.yaml](#bundle-c932d5bb3ac63c2c)
@@ -401,6 +408,68 @@ export function screenToWorld(point, camera, size) {
 ```
 
 
+<a name="bundle-ae3a606a9297c812"></a>
+
+# Resource: assets/path-geometry.mjs
+
+```javascript
+// Original pure geometry helpers. See references/path-morph.md for provenance.
+const distance = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
+
+/** @param {number[][]} points @param {number} count */
+export function resampleClosed(points, count) {
+  if (!Number.isInteger(count) || count < 3) throw new Error('Sample count must be an integer >= 3');
+  if (points.length < 3 || points.some(p => p.length !== 3 || !p.every(Number.isFinite))) throw new Error('Expected finite 3D vertices');
+  const edges = points.map((p, i) => ({a: p, b: points[(i + 1) % points.length], length: distance(p, points[(i + 1) % points.length])})).filter(e => e.length > 1e-10);
+  const total = edges.reduce((sum, e) => sum + e.length, 0);
+  if (total <= 1e-10) throw new Error('Path must have nonzero length');
+  let edge = 0, travelled = 0;
+  return Array.from({length: count}, (_, i) => {
+    const target = total * i / count;
+    while (edge < edges.length - 1 && target > travelled + edges[edge].length) travelled += edges[edge++].length;
+    const e = edges[edge], u = (target - travelled) / e.length;
+    return e.a.map((v, axis) => v + (e.b[axis] - v) * u);
+  });
+}
+
+/** @param {number[][]} a @param {number[][]} b @param {number} amount */
+export function mixPaths(a, b, amount) {
+  if (a.length !== b.length || a.length < 3 || !Number.isFinite(amount)) throw new Error('Paths must share sample count');
+  return a.map((p, i) => p.map((v, axis) => v + (b[i][axis] - v) * amount));
+}
+
+/** @param {number[][]} points */
+export function signedAreaXY(points) {
+  return points.reduce((sum, p, i) => {
+    const q = points[(i + 1) % points.length];
+    return sum + p[0] * q[1] - q[0] * p[1];
+  }, 0) / 2;
+}
+
+/** @param {number[]} p @param {number} yaw @param {number} pitch */
+export function rotatePoint(p, yaw, pitch) {
+  const x = p[0] * Math.cos(yaw) + p[2] * Math.sin(yaw);
+  const z = -p[0] * Math.sin(yaw) + p[2] * Math.cos(yaw);
+  return [x, p[1] * Math.cos(pitch) - z * Math.sin(pitch), p[1] * Math.sin(pitch) + z * Math.cos(pitch)];
+}
+
+/** @param {number[]} point @param {{distance?:number,focal?:number,near?:number}} options */
+export function projectPoint(point, {distance: camera = 900, focal = 900, near = 40} = {}) {
+  const denominator = camera + point[2];
+  if (point.length !== 3 || !point.every(Number.isFinite) || ![camera, focal, near].every(Number.isFinite) || near <= 0 || focal <= 0) throw new Error('Invalid projection input');
+  if (denominator <= near) return null;
+  return [point[0] * focal / denominator, point[1] * focal / denominator, point[2]];
+}
+
+/** @param {number[][]} points */
+export function pathData(points) {
+  if (points.length < 3) throw new Error('Closed SVG path needs >= 3 points');
+  return points.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(3)},${p[1].toFixed(3)}`).join(' ') + ' Z';
+}
+
+```
+
+
 <a name="bundle-4729d3a799088568"></a>
 
 # Resource: assets/remotion-icon.svg
@@ -524,6 +593,51 @@ drawScreenOverlay(ctx);
 复用已有素材和工程。固定依赖，保存 lockfile。用本地字体和 `delayRender/continueRender` 等待真实资源就绪。按分镜选帧，加入转场前后、首尾和快速运动段。检查截图、编码元数据、完整解码、拖动跳帧一致性。播放或听音不可用时写明未检查项。
 
 输出源码、命令、实际参数、验收结果和来源记录。用实测数据报告进度。不要凭 showcase 承诺广播级质量、一键成功或更快的生产时间。保留当前用户授权范围，不加入固定审美禁令或额外审批回合。
+
+
+<a name="bundle-cb7ac7137db97d84"></a>
+
+# Resource: references/path-morph.md
+
+# 路径描边、几何变形与三维投影
+
+制作 SVG 描边、轮廓之间的连续变形、投影到二维画面的空间曲线时读取本文件。以官方 markup 和 rendering 模块核对具体 Remotion API。
+
+## 来源与边界
+
+参考 Motion Canvas 的 [asset-code intro](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/asset-code/src/scenes/intro.tsx) 中的显式 morph/shape 参数，以及 [Tetrahedron.ts](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/asset-code/src/nodes/Tetrahedron.ts) 中的顶点变换、透视除法和前后线条区分。代码为 MIT，仓库已保存许可。这里重写通用机制，不复制原片、背景 shader、文字或媒体素材。
+
+## 先确定顶点对应关系
+
+把 [path-geometry.mjs](#bundle-ae3a606a9297c812) 复制到项目。使用有限的三维顶点 `[x,y,z]` 描述轮廓；平面轮廓的 z 为 0。用 `resampleClosed(points, count)` 沿完整闭合轮廓的弧长重采样，包含最后一条边，但不重复起点。
+
+所有变形目标使用相同采样数。再统一轮廓方向与起始锚点，避免只因索引错位而突然扭转。平面目标可用 `signedAreaXY()` 核对方向，用一个明确位置作为第 0 个顶点。复杂轮廓必要时单独匹配语义锚点；等数量本身不能保证良好的形状对应。
+
+用 `mixPaths(a,b,progress)` 插值对应顶点。保持阶段边界与前一阶段的终态一致。几何单测应检查采样数量、闭合边、方向、锚点、有限坐标、阶段连续性与安全区。允许变形过程出现自交时明确这是轮廓动画，不要宣称它是保持拓扑或体积的实体模拟。
+
+## 用帧控制 SVG 描边
+
+使用 `pathLength={1}`、`strokeDasharray="1 1"` 和 `strokeDashoffset={1-progress}`，其中 progress 来自当前帧。不要用 CSS 自启动动画；也不必每帧调用 DOM 的 `getTotalLength()`。
+
+绘制一层低亮度完整轮廓，再显示正在增长的主描边，确保一开始目标可辨认。采用明确线帽与拐角。需要拖尾时，用多个过去时刻的几何采样，保持确定性；不要让过去帧的像素积累成不可跳帧的状态。
+
+## 投影与深度
+
+先对三维顶点施加正交旋转，再投影。随附 `projectPoint()` 对相机沿 z 轴的简化情况计算：
+
+`screenXY = focal * worldXY / (cameraDistance + worldZ)`
+
+当分母不大于 near 时返回 null。调用者应裁切穿过近裁面的线段，或像示例一样选择保证全部顶点在安全范围内的相机；不能把 null 或非有限坐标写入 SVG。
+
+区分真实的三维坐标变换与视觉近似。FORM 按每条线段平均深度从远到近排序，用背景色擦除交叉处的远线，再绘制近线。擦除段缩短并采用 butt 线帽，避免把相邻线段的连接点切出孔洞。这是细线条的近似遮挡，不能替代精确交点深度、曲面隐藏面判断、Z-buffer 或实体光照。
+
+## 减速、暂停与可携带性
+
+不要在尾帧突然冻结仍在匀速旋转的对象。先用速度逐渐归零的时间映射减速，再固定全部世界状态。检查最后停留段的输出几何或 PNG 是否一致。
+
+使用本地字体并等待加载。公共字体 hook 可供 Canvas 和 SVG 共用；改变 hook 后抽查原有示例，防止新视频可运行而旧视频缺字。把可携带示例依赖的几何资源复制进自身目录，并在完整包生成时检查它与 skill 资源一致。
+
+先通过类型检查和几何单测，再做实际渲染。纯 JavaScript 几何测试通过不能证明 TSX 可以编译。最后抽查描边中途、变形中点、阶段边界、投影交叉点、减速与收尾，并验证编码格式和全片解码。播放与实机检查不可用时记录限制。
 
 
 <a name="bundle-994d056b89abf823"></a>

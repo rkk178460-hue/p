@@ -1,6 +1,6 @@
 # 开源动效案例与复现范围
 
-核对日期：2026-10-13。先读源码，再提取机制；“精彩”是选题判断，不是排行榜。没有声称观看了所有原片，也没有把不同模型的作品归为 GPT 实测结果。
+核对日期：2026-10-13 至 2026-10-14。先读源码，再提取机制；“精彩”是选题判断，不是排行榜。没有声称观看了所有原片，也没有把不同模型的作品归为 GPT 实测结果。
 
 ## 已做成可运行小样
 
@@ -23,7 +23,13 @@
 
 补查运动中点与动作完成帧还发现连接端点不能只估算物体边界。已改用真实六角节点生成终点，并增加连接完整性测试。最后验收覆盖 20 个关键帧与编码后的实际画面。
 
-## 继续保留的光照扩展参考
+## 第三轮：SVG 轮廓变形与三维曲线
+
+继续使用 Motion Canvas 的 MIT 快照 `8ffefed144368d33de4b0e451894c718eb95d574`。核对了 [asset-code intro 的 morph/shape 编排](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/asset-code/src/scenes/intro.tsx) 和 [Tetrahedron.ts 的投影与前后线条处理](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/asset-code/src/nodes/Tetrahedron.ts)。原案例入口：[Could This Asset Be Code](https://youtu.be/s1ZQnS_tOg0)。本轮没有观看原片完整播放，也没有复制其 shader 或素材。
+
+`Form` 用原创 SVG 实现描边增长、闭合轮廓重采样、圆/三角形/方形变形，再过渡成三维闭合曲线。轮廓均为 192 个对应顶点；平面目标统一方向和顶点起始位置。曲线按纯数学旋转和透视投影生成画面，深度排序与背景擦除只用于近似线条遮挡，不是实体物理渲染。
+
+几何资源附带采样、混合、方向、旋转、近裁面投影与 SVG 路径函数。字体现改用 Canvas/SVG 共用的加载 hook，并抽查旧 PULSE 示例。运行命令、实际结果与限制见 `docs/validation-v3.md`。
 
 [Deferred Lights](https://youtu.be/R6vQ9VmMz2w) 的 [lightComposite.tsx](https://github.com/motion-canvas/examples/blob/8ffefed144368d33de4b0e451894c718eb95d574/examples/deferred-lighting/src/scenes/lightComposite.tsx) 把光照拆成衰减、颜色、材质相乘和体积叠加，再按时间提示组合。首版提取“让参数变化与画面变化一一对应”的讲解方式，尚未移植其着色器或三维管线。PULSE 的中心光点是装饰性 Canvas 效果，不能称为真实体积光。
 

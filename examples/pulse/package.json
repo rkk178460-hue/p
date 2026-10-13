@@ -9,6 +9,8 @@
     "render:parallax": "remotion render src/Root.tsx ParallaxStudy out/parallax.mp4 --codec=h264 --crf=18 --concurrency=2",
     "render:mask": "remotion render src/Root.tsx MaskTrailsStudy out/mask-trails.mp4 --codec=h264 --crf=18 --concurrency=2",
     "render:vector": "remotion render src/Root.tsx Vector out/vector.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2",
+    "render:form": "remotion render src/Root.tsx Form out/form.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2",
+    "qa:form": "remotion render src/Root.tsx Form out/form-qa --frames=0,72,144,180,246,312,360,420,480,540,612,684,750,780,810,899 --image-format=png --concurrency=2",
     "qa:vector": "remotion render src/Root.tsx Vector out/vector-qa --frames=0,132,168,204,234,264,288,312,351,384,402,420,456,492,566,588,654,720,792,899 --image-format=png --concurrency=2",
     "qa": "remotion render src/Root.tsx Pulse out/qa --frames=0,120,290,300,420,590,600,720,899 --image-format=png --concurrency=2"
   },

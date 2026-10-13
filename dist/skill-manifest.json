@@ -4,11 +4,11 @@
     "commit": "7ba4dcf8ebe1626b00baa41e1f2478113719b60b",
     "version": "4.0.535"
   },
-  "file_count": 146,
+  "file_count": 148,
   "files": {
     "SKILL.md": {
-      "bytes": 7419,
-      "sha256": "45545ecb9d04ea1e8ca3d1341f4e8e7093136244778cfde33499162948744585"
+      "bytes": 7717,
+      "sha256": "fece9bdb77b28ce273f0fb65febdb9429a63de5320b93d5883fd543102f566d3"
     },
     "agents/openai.yaml": {
       "bytes": 487,
@@ -22,6 +22,10 @@
       "bytes": 1738,
       "sha256": "8936b24f674a1250d999e2c2b5901374fb4240426f32bd1ae340c352a90d617d"
     },
+    "assets/path-geometry.mjs": {
+      "bytes": 2825,
+      "sha256": "59f731ba39d4b8851a46ee8ae1db2437d7a78579f13929026d289d7f72823383"
+    },
     "assets/remotion-icon.svg": {
       "bytes": 1303,
       "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
@@ -33,6 +37,10 @@
     "references/github-practice.md": {
       "bytes": 4048,
       "sha256": "2fdb9a219fa00f7b0a67ccbc824d9a9853342c0b07ae84bc31ac4c04a6350e7f"
+    },
+    "references/path-morph.md": {
+      "bytes": 3851,
+      "sha256": "1d18c58c48be0dbcb393d3527c74ac53fe25121338f48d791e88dc8a17a01765"
     },
     "references/production-workflow.md": {
       "bytes": 5389,
@@ -591,5 +599,5 @@
       "sha256": "5007669bd0555b0f4565b4e7176fa191310ab0039b2ed09d867a9270f5b0ce58"
     }
   },
-  "single_file_sha256": "70404bfe937b6c075fc17abf53280f923d383c97f46f241e79ac2a3c502a7377"
+  "single_file_sha256": "b0c71f2b644bd7cf63608034e8c82deff4165d219c6d4f34576788b4b33ca41f"
 }

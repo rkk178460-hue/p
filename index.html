@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>PELAGIC // WebGPU & TSL Procedural Ocean</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.webgpu.js",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.webgpu.js",
+      "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.tsl.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    :root {
+      --bg-deep: #040811;
+      --glass-bg: rgba(8, 15, 28, 0.62);
+      --glass-border: rgba(148, 195, 255, 0.16);
+      --glass-border-strong: rgba(148, 195, 255, 0.34);
+      --text-primary: #ecf3ff;
+      --text-secondary: rgba(205, 224, 252, 0.68);
+      --text-muted: rgba(160, 185, 220, 0.46);
+      --accent: #5cc8ff;
+      --accent-warm: #ffb36b;
+      --ok: #42e695;
+      --warn: #ffbe55;
+      --danger: #ff5e7a;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Cinematic Vignette & Subtle Film Grain Overlay */
+    .viewport-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(
+        circle at 50% 50%,
+        rgba(0, 0, 0, 0) 58%,
+        rgba(2, 6, 15, 0.42) 100%
+      );
+    }
+
+    /* HUD Layout */
+    .hud-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(14px, 2.4vw, 28px);
+      transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand-block {
+      pointer-events: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 12px 18px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand-kicker {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-kicker::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .brand-title {
+      font-size: clamp(15px, 1.8vw, 19px);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+
+    /* Telemetry / FPS Widget */
+    .telemetry-card {
+      pointer-events: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+      font-family: var(--font-mono);
+    }
+
+    .fps-main {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .fps-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      min-width: 2.2ch;
+      text-align: right;
+    }
+
+    .fps-unit {
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+    }
+
+    .telemetry-divider {
+      width: 1px;
+      height: 26px;
+      background: var(--glass-border);
+    }
+
+    .telemetry-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok);
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .status-dot.warn {
+      background: var(--warn);
+      box-shadow: 0 0 8px var(--warn);
+    }
+
+    /* Bottom Control Dock */
+    .hud-bottom {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .control-dock {
+      pointer-events: auto;
+      width: min(1040px, 100%);
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      padding: clamp(12px, 1.8vw, 18px) clamp(14px, 2.2vw, 24px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
+      display: grid;
+      grid-template-columns: 1.25fr 1.35fr 0.95fr;
+      gap: clamp(14px, 2vw, 26px);
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .control-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .control-readout {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    /* Custom Range Slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      cursor: pointer;
+      touch-action: pan-y;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 12px rgba(92, 200, 255, 0.65);
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: var(--accent);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 12px rgba(92, 200, 255, 0.65);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 195, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .chip-btn:hover {
+      border-color: var(--glass-border-strong);
+      color: var(--text-primary);
+      background: rgba(92, 200, 255, 0.12);
+    }
+
+    .chip-btn.active {
+      border-color: var(--accent);
+      color: var(--text-primary);
+      background: rgba(92, 200, 255, 0.22);
+      box-shadow: 0 0 12px rgba(92, 200, 255, 0.2);
+    }
+
+    .drift-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      padding: 9px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--glass-border-strong);
+      background: rgba(92, 200, 255, 0.15);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(92, 200, 255, 0.25);
+      border-color: var(--accent);
+    }
+
+    .toggle-btn.off {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--glass-border);
+      color: var(--text-secondary);
+    }
+
+    .toggle-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok);
+    }
+
+    .toggle-btn.off .toggle-indicator {
+      background: var(--text-muted);
+      box-shadow: none;
+    }
+
+    .secondary-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      padding: 9px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .secondary-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--glass-border-strong);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .hint-bar {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* Loading & Error Overlays */
+    .overlay-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: radial-gradient(circle at 50% 38%, #0a192f 0%, #030710 75%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      transition: opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.75s;
+    }
+
+    .overlay-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .overlay-card {
+      width: min(460px, 100%);
+      background: rgba(9, 18, 34, 0.78);
+      border: 1px solid var(--glass-border-strong);
+      border-radius: 18px;
+      padding: 28px 26px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+      text-align: center;
+    }
+
+    .loader-ring {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid rgba(92, 200, 255, 0.18);
+      border-top-color: var(--accent);
+      margin: 0 auto 18px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .overlay-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .overlay-status {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      min-height: 1.5em;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 15%;
+      background: linear-gradient(90deg, var(--accent), #88ffe2);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
+    .error-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--danger);
+      background: rgba(255, 94, 122, 0.12);
+      border: 1px solid rgba(255, 94, 122, 0.35);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    .error-detail {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-top: 10px;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      word-break: break-word;
+    }
+
+    @media (max-width: 860px) {
+      .control-dock {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .hud-top {
+        align-items: stretch;
+      }
+      .brand-block, .telemetry-card {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container" aria-label="Interactive 3D Procedural Ocean Viewport"></div>
+  <div class="viewport-vignette"></div>
+
+  <!-- HUD Interface -->
+  <div class="hud-layer" id="hud-layer">
+    <header class="hud-top">
+      <div class="brand-block">
+        <div class="brand-kicker">WEBGPU // TSL SHADER PIPELINE</div>
+        <h1 class="brand-title">PELAGIC HORIZON</h1>
+        <div class="brand-sub">5-Wave Analytical Gerstner · 3-Layer Gradient FBM · Shared Sky</div>
+      </div>
+
+      <div class="telemetry-card" aria-live="polite">
+        <div class="fps-main">
+          <span class="fps-value" id="fps-value">60</span>
+          <span class="fps-unit">FPS</span>
+        </div>
+        <div class="telemetry-divider"></div>
+        <div class="telemetry-meta">
+          <div><span class="status-dot" id="perf-dot"></span><span id="backend-readout">WebGPU · ACES + Bloom</span></div>
+          <div id="frame-readout">16.7 ms · DPR 1.50x</div>
+        </div>
+      </div>
+    </header>
+
+    <footer class="hud-bottom">
+      <section class="control-dock" aria-label="Ocean Simulation Controls">
+        <!-- SEA STATE Control -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label" for="sea-state-slider">SEA STATE</label>
+            <span class="control-readout" id="sea-state-readout">1.00 · MODERATE SWELL</span>
+          </div>
+          <input
+            type="range"
+            id="sea-state-slider"
+            min="0.15"
+            max="2.00"
+            step="0.01"
+            value="1.00"
+          />
+          <div class="preset-row" id="sea-presets">
+            <button type="button" class="chip-btn" data-sea="0.35">CALM</button>
+            <button type="button" class="chip-btn active" data-sea="1.00">SWELL</button>
+            <button type="button" class="chip-btn" data-sea="1.45">GALE</button>
+            <button type="button" class="chip-btn" data-sea="1.90">STORM</button>
+          </div>
+        </div>
+
+        <!-- TIME OF DAY Control -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label" for="time-slider">TIME OF DAY</label>
+            <span class="control-readout" id="time-readout">17:24 · GOLDEN HOUR</span>
+          </div>
+          <input
+            type="range"
+            id="time-slider"
+            min="0.00"
+            max="24.00"
+            step="0.01"
+            value="17.40"
+          />
+          <div class="preset-row" id="time-presets">
+            <button type="button" class="chip-btn" data-time="6.15">DAWN</button>
+            <button type="button" class="chip-btn" data-time="12.50">NOON</button>
+            <button type="button" class="chip-btn active" data-time="17.40">SUNSET</button>
+            <button type="button" class="chip-btn" data-time="22.50">NIGHT</button>
+            <button type="button" class="chip-btn" id="auto-sun-btn" title="Continuously advance solar cycle">CYCLE: OFF</button>
+          </div>
+        </div>
+
+        <!-- DRIFT & Camera Control -->
+        <div class="control-group">
+          <div class="control-header">
+            <span class="control-label">DRIFT & CAMERA</span>
+            <span class="control-readout" id="drift-readout">GLIDE ACTIVE</span>
+          </div>
+          <div class="drift-actions">
+            <button type="button" class="toggle-btn" id="drift-toggle-btn" aria-pressed="true">
+              <span class="toggle-indicator"></span>
+              <span id="drift-btn-text">DRIFT: ON</span>
+            </button>
+            <button type="button" class="secondary-btn" id="reset-cam-btn">RESET VIEW</button>
+          </div>
+          <div class="hint-bar">DRAG / TOUCH TO ORBIT · SCROLL / PINCH TO ZOOM</div>
+        </div>
+      </section>
+    </footer>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="overlay-screen" id="loading-overlay" role="status" aria-live="polite">
+    <div class="overlay-card">
+      <div class="loader-ring"></div>
+      <h2 class="overlay-title">INITIALIZING OCEAN ENGINE</h2>
+      <div class="overlay-status" id="loading-status">Checking WebGPU hardware adapter...</div>
+      <div class="progress-track">
+        <div class="progress-fill" id="loading-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Overlay -->
+  <div class="overlay-screen hidden" id="error-overlay" role="alert">
+    <div class="overlay-card">
+      <span class="error-badge">WEBGPU INITIALIZATION ERROR</span>
+      <h2 class="overlay-title" id="error-title">WebGPU Not Available</h2>
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.55;">
+        This procedural ocean simulation requires a browser and GPU with active WebGPU support (Chrome 113+, Edge 113+, Safari 18+, or Firefox Nightly with WebGPU enabled).
+      </p>
+      <div class="error-detail" id="error-detail">navigator.gpu is undefined.</div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

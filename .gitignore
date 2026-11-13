@@ -1,9 +1,0 @@
-**/node_modules/
-**/.remotion/
-**/out/
-**/.cache/
-.env
-.env.*
-!.env.example
-*.log
-__pycache__/

@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#091013">
+  <title>Waterline</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      color-scheme: dark;
+      --edge: clamp(16px, 3.3vw, 56px);
+      --ink: #faf3e7;
+      --muted: #dfd8ce;
+      --accent: #ffcf92;
+      font-family: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "Courier New", monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { background: #091013; color: var(--ink); overflow: hidden; }
+    button, select, input { font: inherit; }
+    button, select { color: inherit; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+    }
+    [hidden] { display: none !important; }
+
+    #stage, .shading { position: absolute; inset: 0; }
+    #stage { opacity: 0; transition: opacity 520ms ease; }
+    #stage[data-ready] { opacity: 1; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+
+    .shading {
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, #071012b0, transparent 136px),
+        linear-gradient(0deg, #071012e8, transparent 168px);
+    }
+
+    .masthead, .dock {
+      position: absolute;
+      right: max(var(--edge), env(safe-area-inset-right));
+      left: max(var(--edge), env(safe-area-inset-left));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      pointer-events: none;
+    }
+    .masthead { top: max(24px, env(safe-area-inset-top)); }
+    .dock { bottom: max(24px, calc(12px + env(safe-area-inset-bottom))); }
+    .masthead h1 {
+      margin: 0;
+      font: 400 clamp(19px, 2.2vw, 29px)/1 "Baskervville", Georgia, serif;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .meter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .meter output { display: inline-block; min-width: 3ch; text-align: right; color: var(--accent); }
+    select {
+      background: #0b1316df;
+      border: 1px solid #fff5;
+      border-radius: 2px;
+      min-height: 36px;
+      padding: 0 8px;
+      font-size: 11px;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(120px, 176px) minmax(120px, 176px) 64px;
+      gap: 24px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+      pointer-events: auto;
+    }
+    .controls :disabled, select:disabled { opacity: .65; cursor: default; }
+    .control { display: grid; grid-template-rows: 16px 32px; min-width: 0; }
+    .readout {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      line-height: 1;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .readout output { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    input[type="range"] {
+      --fill: 50%;
+      appearance: none;
+      width: 100%;
+      min-width: 0;
+      height: 28px;
+      margin: 2px 0;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 2px;
+      background: linear-gradient(to right, var(--accent) var(--fill), #fff5 var(--fill));
+    }
+    input[type="range"]::-moz-range-track {
+      height: 2px;
+      background: linear-gradient(to right, var(--accent) var(--fill), #fff5 var(--fill));
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      margin-top: -5px;
+      background: var(--ink);
+      border: 0;
+      border-radius: 50%;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: var(--ink);
+      border: 0;
+      border-radius: 50%;
+    }
+
+    .drift {
+      display: grid;
+      grid-template-rows: 16px 32px;
+      justify-items: start;
+      align-items: center;
+      border: 0;
+      border-left: 1px solid #fff5;
+      padding: 0 0 0 16px;
+      background: transparent;
+      cursor: pointer;
+    }
+    .drift span { font-size: 11px; letter-spacing: .08em; }
+    .drift strong { font-size: 12px; font-weight: 400; color: var(--muted); }
+    .drift[aria-pressed="true"] strong { color: var(--accent); }
+    .hint { margin: 0; color: var(--muted); font-size: 11px; line-height: 16px; text-align: right; }
+    .hint-touch { display: none; }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #091013db;
+      text-align: center;
+    }
+    .loading div { max-width: 392px; }
+    .loading h2 { margin: 0 0 16px; font: 400 27px/1.2 "Baskervville", Georgia, serif; }
+    .loading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .loading button {
+      margin-top: 24px;
+      padding: 12px 24px;
+      border: 1px solid #fff5;
+      border-radius: 2px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    @media (pointer: coarse) {
+      .hint-touch { display: inline; }
+      .hint-pointer { display: none; }
+      input[type="range"] { height: 40px; margin: 0; }
+      .control, .drift { grid-template-rows: 16px 40px; }
+      select { min-height: 44px; }
+    }
+    @media (max-width: 700px) {
+      .masthead { top: max(16px, env(safe-area-inset-top)); }
+      .dock { display: grid; grid-template-columns: 1fr; gap: 4px; }
+      .controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 54px; gap: 16px; }
+      .drift { padding-left: 12px; }
+      .hint { text-align: left; }
+    }
+    @media (max-width: 360px) {
+      .controls { gap: 8px; }
+      .readout { gap: 4px; letter-spacing: 0; }
+      .meter { gap: 8px; }
+    }
+    @media (max-height: 420px) and (orientation: landscape) {
+      .dock { bottom: max(8px, env(safe-area-inset-bottom)); }
+      .hint { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #stage { transition: none; }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.183.2/build/three.webgpu.min.js",
+        "three/webgpu": "https://unpkg.com/three@0.183.2/build/three.webgpu.min.js",
+        "three/tsl": "https://unpkg.com/three@0.183.2/build/three.tsl.min.js",
+        "three/addons/": "https://unpkg.com/three@0.183.2/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="stage" aria-label="Interactive open ocean"></main>
+  <div class="shading" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <h1>Waterline</h1>
+    <div class="meter">
+      <span><output id="fps-rate" aria-live="off">—</output> FPS</span>
+      <select id="fps-cap" aria-label="Frame rate limit" disabled>
+        <option value="auto">AUTO</option>
+        <option value="30">30 CAP</option>
+        <option value="60">60 CAP</option>
+      </select>
+    </div>
+  </header>
+
+  <footer class="dock">
+    <fieldset class="controls" id="controls" aria-label="Ocean controls" disabled>
+      <div class="control">
+        <div class="readout"><label for="sea-state">SEA STATE</label><output for="sea-state" id="sea-value">46%</output></div>
+        <input id="sea-state" type="range" min="0" max="100" step="1" value="46">
+      </div>
+      <div class="control">
+        <div class="readout"><label for="time-of-day">TIME OF DAY</label><output for="time-of-day" id="time-value">17:33</output></div>
+        <input id="time-of-day" type="range" min="0" max="1440" step="1" value="1053">
+      </div>
+      <button class="drift" id="drift" type="button" aria-pressed="true" aria-label="Camera drift">
+        <span>DRIFT</span><strong id="drift-value">ON</strong>
+      </button>
+    </fieldset>
+    <p class="hint">
+      <span class="hint-pointer">Drag to orbit · Scroll to zoom</span>
+      <span class="hint-touch">Swipe to orbit · Pinch to zoom</span>
+    </p>
+  </footer>
+
+  <section class="loading" id="loading" aria-labelledby="loading-title">
+    <div>
+      <h2 id="loading-title">Preparing the ocean</h2>
+      <p id="loading-message" role="status">Checking WebGPU support…</p>
+      <button type="button" id="retry" hidden>Reload</button>
+      <noscript><p>Enable JavaScript to render the ocean.</p></noscript>
+    </div>
+  </section>
+
+  <script type="module">
+    const overlay = document.querySelector("#loading");
+    const title = document.querySelector("#loading-title");
+    const message = document.querySelector("#loading-message");
+    const retry = document.querySelector("#retry");
+
+    const showError = (detail) => {
+      delete document.querySelector("#stage").dataset.ready;
+      document.querySelector("#controls").disabled = true;
+      document.querySelector("#fps-cap").disabled = true;
+      title.textContent = "The ocean couldn’t open";
+      message.textContent = detail;
+      overlay.hidden = false;
+      retry.hidden = false;
+    };
+    retry.addEventListener("click", () => location.reload());
+
+    try {
+      if (location.protocol === "file:") {
+        throw new Error("Serve index.html and main.js together over localhost. Use python3 -m http.server 8000, then open http://localhost:8000.");
+      }
+      if (!window.isSecureContext || !navigator.gpu) {
+        throw new Error("This browser session has no WebGPU access. Open the page on HTTPS or localhost in a browser with WebGPU and graphics acceleration enabled.");
+      }
+
+      message.textContent = "Loading the Three.js modules…";
+      const { start } = await import("./main.js").catch(() => {
+        throw new Error("Couldn’t load main.js or Three.js. Keep both project files together and allow access to unpkg.com.");
+      });
+      await start({
+        progress: (text) => { message.textContent = text; },
+        error: showError,
+      });
+      overlay.hidden = true;
+    } catch (error) {
+      showError(error.message || String(error));
+    }
+  </script>
+</body>
+</html>

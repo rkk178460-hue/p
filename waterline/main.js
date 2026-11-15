@@ -10,6 +10,7 @@ import { bloom } from "three/addons/tsl/display/BloomNode.js";
 const TAU = Math.PI * 2;
 const OCEAN_RADIUS = 14_000;
 const GRID_FOCUS = 1.5;
+const WATER_IOR = 1.333;
 const BASE_WAVES = [
   // Wavelength (m), amplitude (m), heading (degrees), phase (radians).
   [90, 1.08, 63, 0.24],
@@ -19,10 +20,10 @@ const BASE_WAVES = [
   [7, 0.09, 78, 3.80],
 ];
 const WATER_DETAIL = [
-  // Directional frequency (cycles/m), height, FBM weight, advection (cells/s).
-  { frequency: [0.16, 0.29], height: 0.33, weight: 0.55, flow: [-0.11, 0.05] },
-  { frequency: [0.59, 1.06], height: 0.13, weight: 0.29, flow: [-0.28, 0.15] },
-  { frequency: [1.75, 3.20], height: 0.048, weight: 0.16, flow: [-0.56, 0.24] },
+  // Crossing ripple families, with frequencies in cycles/m and advection in cells/s.
+  { frequency: [0.15, 0.35], height: 0.32, heading: 27, weight: 0.54, flow: [0.045, -0.28] },
+  { frequency: [0.43, 0.94], height: 0.108, heading: -22, weight: 0.30, flow: [-0.12, -0.46] },
+  { frequency: [1.48, 2.95], height: 0.034, heading: 64, weight: 0.16, flow: [0.21, -0.68] },
 ];
 
 const gradient = Fn(([cell]) => {
@@ -117,7 +118,7 @@ function makeSky(sun, light, clock) {
 
   // Both the sky dome and the water call this function in world space.
   // The water integrates the solar disk separately as a rough specular lobe.
-  const radiance = Fn(([ray, diskWeight]) => {
+  const radiance = Fn(([ray, diskWeight, reflectionSpread]) => {
     const rgb = atmosphere(ray).toVar();
     const altitude = ray.y.max(0).toVar();
     const band = smoothstep(0.012, 0.066, altitude)
@@ -134,10 +135,12 @@ function makeSky(sun, light, clock) {
         .add(gradientNoise(domain.mul(4.36).add(vec2(-7.2, 12.7))).x.mul(0.12))
         .add(weather.x.mul(0.27)).toVar();
       const depth = fbm.add(0.031).max(0).mul(7.8).toVar();
-      const coverage = float(1).sub(depth.negate().exp()).mul(band);
+      const cloudFootprint = reflectionSpread.mul(1.3).div(altitude.add(0.13));
+      const cloudBlur = smoothstep(0.12, 0.72, cloudFootprint).mul(0.78);
+      const coverage = mix(float(1).sub(depth.negate().exp()), 0.27, cloudBlur).mul(band);
       const towardSun = dot(ray, sun).clamp(0, 1).pow(8);
       const lightSlope = dot(main.yz, sun.xz).mul(0.27).add(0.55).clamp(0.16, 1);
-      const edgeLight = depth.mul(-0.6).exp().mul(lightSlope);
+      const edgeLight = depth.mul(-0.6).exp().mul(mix(lightSlope, 0.55, cloudBlur));
       const shade = mix(vec3(0.012, 0.019, 0.034), vec3(0.47, 0.55, 0.61), light.x);
       const cloud = mix(shade, vec3(0.077, 0.071, 0.086), light.y.mul(light.x))
         .add(sunColor.mul(towardSun.mul(edgeLight).mul(light.z).mul(0.29)));
@@ -155,7 +158,10 @@ function makeSky(sun, light, clock) {
 function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
   const vNormal = varyingProperty("vec3", "vSeaNormal");
   const vRest = varyingProperty("vec2", "vSeaRestXZ");
-  const vCrest = varyingProperty("vec2", "vSeaHeightAndJacobian");
+  const vCrest = varyingProperty("vec3", "vSeaHeightJacobianAndVariance");
+  const windHeading = THREE.MathUtils.degToRad(BASE_WAVES[0][2]);
+  const wind = vec3(Math.cos(windHeading), 0, Math.sin(windHeading));
+  const extinction = vec3(0.92, 0.29, 0.18);
 
   const displacement = Fn(() => {
     const local = positionGeometry.xz.toVar();
@@ -167,6 +173,7 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
     const offset = vec3(0).toVar();
     const tangentX = vec3(1, 0, 0).toVar();
     const tangentZ = vec3(0, 0, 1).toVar();
+    const lostVariance = float(0).toVar();
 
     for (const [wavelength, amplitude, heading, phase] of BASE_WAVES) {
       const theta = THREE.MathUtils.degToRad(heading);
@@ -183,10 +190,12 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
       // Include the fade derivative in both tangents.
       const lodSlope = gridGrowth / (0.20 * wavelength);
       const lod = radius.add(GRID_FOCUS).mul(lodSlope).sub(0.65).clamp(0, 1).toVar();
-      const window = float(1).sub(lod.mul(lod).mul(float(3).sub(lod.mul(2))));
-      const fullAmplitude = amplitudeScale.mul(amplitude);
+      const window = float(1).sub(lod.mul(lod).mul(float(3).sub(lod.mul(2)))).toVar();
+      const fullAmplitude = amplitudeScale.mul(amplitude).toVar();
       const a = fullAmplitude.mul(window).toVar();
       const da = radialDir.mul(fullAmplitude.mul(-6 * lodSlope).mul(lod).mul(float(1).sub(lod))).toVar();
+      // The mean square slope of a sinusoid is (ak)^2 / 2.
+      lostVariance.addAssign(fullAmplitude.mul(k).pow(2).mul(0.5).mul(float(1).sub(window.mul(window))));
 
       const horizontal = a.mul(cosine).mul(stretch).toVar();
       offset.addAssign(vec3(horizontal.mul(dx), a.mul(sine), horizontal.mul(dz)));
@@ -199,32 +208,59 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
 
     vNormal.assign(cross(tangentZ, tangentX).normalize());
     vRest.assign(p);
-    vCrest.assign(vec2(offset.y, tangentX.x.mul(tangentZ.z).sub(tangentZ.x.mul(tangentX.z))));
+    const jacobian = tangentX.x.mul(tangentZ.z).sub(tangentZ.x.mul(tangentX.z));
+    vCrest.assign(vec3(offset.y, jacobian, lostVariance));
     return positionGeometry.add(offset);
   });
 
   const smallWaves = Fn(([rest]) => {
-    const c = 0.91712082;
-    const s = 0.39860933;
-    const domain = vec2(rest.x.mul(c).sub(rest.y.mul(s)), rest.x.mul(s).add(rest.y.mul(c))).toVar();
-    const footprint = fwidth(domain).toVar();
     const slope = vec2(0).toVar();
     const fbm = float(0).toVar();
+    const lostVariance = float(0).toVar();
 
-    WATER_DETAIL.forEach(({ frequency, height, weight, flow }, i) => {
+    WATER_DETAIL.forEach(({ frequency, height, heading, weight, flow }, i) => {
+      const angle = THREE.MathUtils.degToRad(heading);
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
       const scale = vec2(...frequency);
-      const cellsPerPixel = footprint.mul(scale).toVar();
-      const keep = float(1).sub(smoothstep(0.30, 0.94, cellsPerPixel.x.max(cellsPerPixel.y))).toVar();
+      const domain = vec2(rest.x.mul(c).sub(rest.y.mul(s)), rest.x.mul(s).add(rest.y.mul(c))).mul(scale).toVar();
+      const cellsPerPixel = fwidth(domain).toVar();
+      const keep = float(1).sub(smoothstep(0.26, 0.82, cellsPerPixel.x.max(cellsPerPixel.y))).toVar();
+      const slopeVariance = 0.23 * height ** 2 * (frequency[0] ** 2 + frequency[1] ** 2);
+      lostVariance.addAssign(float(1).sub(keep.mul(keep)).mul(slopeVariance));
+
       If(keep.greaterThan(0.001), () => {
-        const p = domain.mul(scale).add(vec2(12.4 + i * 23.7, -9.7 + i * 11.8)).add(vec2(...flow).mul(clock));
+        const p = domain.add(vec2(12.4 + i * 23.7, -9.7 + i * 11.8)).add(vec2(...flow).mul(clock));
         const layer = gradientNoise(p).toVar();
+        const gradient = layer.yz.mul(scale).toVar();
+        const worldGradient = vec2(
+          gradient.x.mul(c).add(gradient.y.mul(s)),
+          gradient.y.mul(c).sub(gradient.x.mul(s)),
+        );
         fbm.addAssign(layer.x.mul(weight).mul(keep));
-        slope.addAssign(layer.yz.mul(scale).mul(height).mul(keep));
+        slope.addAssign(worldGradient.mul(height).mul(keep));
       });
     });
 
-    const worldSlope = vec2(slope.x.mul(c).add(slope.y.mul(s)), slope.y.mul(c).sub(slope.x.mul(s)));
-    return vec3(fbm, worldSlope);
+    return vec4(fbm, slope, lostVariance);
+  });
+
+  const transmittedCosine = Fn(([incident]) => {
+    return float(1).sub(float(1).sub(incident.mul(incident)).div(WATER_IOR ** 2)).sqrt();
+  });
+
+  const waterFresnel = Fn(([incident, transmitted]) => {
+    const s = incident.sub(transmitted.mul(WATER_IOR)).div(incident.add(transmitted.mul(WATER_IOR))).toVar();
+    const p = incident.mul(WATER_IOR).sub(transmitted).div(incident.mul(WATER_IOR).add(transmitted)).toVar();
+    return s.mul(s).add(p.mul(p)).mul(0.5);
+  });
+
+  // Rational approximation of the Smith masking term for Gaussian slopes.
+  const beckmannLambda = Fn(([cosine, projectedAlpha]) => {
+    const a = cosine.div(projectedAlpha.max(0.00001)).min(1.6).toVar();
+    const a2 = a.mul(a).toVar();
+    return float(1).sub(a.mul(1.259)).add(a2.mul(0.396)).max(0)
+      .div(a.mul(3.535).add(a2.mul(2.181)).max(0.001));
   });
 
   const waterColor = Fn(() => {
@@ -233,52 +269,92 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
     const view = towardEye.div(distance.max(0.001)).toVar();
     const baseNormal = vNormal.normalize().toVar();
     const detail = smallWaves(vRest).toVar();
-    const perturbation = detail.yz.mul(baseNormal.y).mul(sea.mul(0.75).add(0.63)).toVar();
+    const rippleStrength = sea.mul(0.98).add(0.48).toVar();
+    const perturbation = detail.yz.mul(baseNormal.y).mul(rippleStrength).toVar();
     const normal = baseNormal.sub(vec3(perturbation.x, 0, perturbation.y)).normalize().toVar();
-    const noV = dot(normal, view).clamp(0.012, 1).toVar();
-    const fresnel = float(0.0204).add(float(1).sub(noV).pow(5).mul(0.9796)).toVar();
+    const noV = dot(normal, view).clamp(0.004, 1).toVar();
+    const sunFacing = dot(normal, sun).clamp(0, 1).toVar();
+    const relativeHeight = vCrest.x.div(sea.mul(1.24).add(0.28)).toVar();
+    const compression = float(1).sub(vCrest.y).max(0).toVar();
+
+    // Transfer unresolved surface slope into the specular lobe as detail fades.
+    const slopeVariance = vCrest.z.add(detail.w.mul(rippleStrength.mul(rippleStrength))).toVar();
+    const capillaryAlpha = mix(0.019, 0.056, sea).toVar();
+    const alpha = vec2(1.38, 0.62).mul(slopeVariance)
+      .add(capillaryAlpha.mul(capillaryAlpha)).sqrt().toVar();
+
+    const averagedNoV = noV.mul(noV).add(slopeVariance.mul(0.28)).sqrt().min(1).toVar();
+    const noT = transmittedCosine(averagedNoV).toVar();
+    const fresnel = waterFresnel(averagedNoV, noT).toVar();
+
+    // Beer–Lambert attenuation along a representative path inside the water.
+    const ambient = mix(vec3(0.010, 0.021, 0.038), vec3(0.060, 0.135, 0.165), light.x);
+    const sunlight = sky.sunColor.mul(sun.y.clamp(0, 1).mul(light.z).mul(0.095));
+    const opticalDepth = float(3.6).div(noT).toVar();
+    const body = ambient.add(sunlight).mul(vec3(0.072, 0.258, 0.297))
+      .mul(vec3(1).sub(extinction.mul(opticalDepth).negate().exp())).toVar();
+
+    const crown = smoothstep(0.11, 0.32, compression)
+      .mul(smoothstep(0.10, 0.94, relativeHeight)).toVar();
+    const backlight = dot(view.negate(), sun).clamp(0, 1).pow(5);
+    const thickness = mix(1.8, 0.65, crown).div(noT);
+    const throughCrest = sky.sunColor.mul(vec3(0.047, 0.26, 0.23))
+      .mul(extinction.mul(thickness).negate().exp())
+      .mul(crown.mul(backlight).mul(light.z)).toVar();
 
     const ray = reflect(view.negate(), normal).toVar();
-    const reflectedRay = vec3(ray.x, ray.y.max(0.001), ray.z).normalize().toVar();
-    const reflected = sky.radiance(reflectedRay, float(0)).toVar();
-    const reflectedVisibility = mix(0.26, 1.0, smoothstep(-0.26, 0.035, ray.y));
+    const spread = alpha.x.add(alpha.y).mul(0.61).add(0.028).toVar();
+    const aboveWater = smoothstep(spread.mul(-1.40), spread, ray.y).toVar();
+    const skyElevation = ray.y.add(ray.y.mul(ray.y).add(spread.mul(spread)).sqrt()).mul(0.5);
+    const reflectedRay = vec3(ray.x, skyElevation.max(0.001), ray.z).normalize().toVar();
+    const skyReflection = sky.radiance(reflectedRay, float(0), spread).toVar();
+    // Below the horizon a reflection encounters other waves, which are lit by the same sky.
+    const neighboringWater = body.mul(0.67).add(skyReflection.mul(0.16));
+    const reflected = mix(neighboringWater, skyReflection, aboveWater);
 
-    const daylight = light.x;
-    const crest = smoothstep(0.02, 1.08, vCrest.x.div(sea.mul(1.24).add(0.28))).toVar();
-    const waterDepth = crest.mul(0.47).add(detail.x.mul(0.54)).add(baseNormal.z.mul(0.17)).clamp(0, 1);
-    const deep = mix(vec3(0.0015, 0.0052, 0.0098), vec3(0.004, 0.027, 0.033), daylight);
-    const shallow = mix(vec3(0.004, 0.015, 0.023), vec3(0.018, 0.107, 0.099), daylight);
-    const body = mix(deep, shallow, waterDepth);
-    const forward = dot(view.negate(), sun).clamp(0, 1).pow(4);
-    const thinCrest = crest.pow(2).mul(forward.mul(0.78).add(0.22)).mul(light.z).mul(0.60);
-    const transmission = vec3(0.035, 0.19, 0.145).mul(thinCrest);
+    const glint = float(0).toVar();
+    If(light.z.greaterThan(0.001).and(sunFacing.greaterThan(0)), () => {
+      const alongWind = wind.sub(normal.mul(dot(wind, normal))).normalize().toVar();
+      const acrossWind = cross(normal, alongWind).toVar();
+      // Fold the finite solar disk into the slope lobe before evaluating it.
+      const solarRadius = mix(0.0024, 0.0046, light.y).toVar();
+      const solarAlpha = alpha.mul(alpha).add(solarRadius.mul(solarRadius)).sqrt().toVar();
+      const lightAndView = view.add(sun).toVar();
+      const half = lightAndView.div(lightAndView.length().max(0.00001)).toVar();
+      const noH = dot(normal, half).max(0.02).toVar();
+      const voH = dot(view, half).clamp(0, 1).toVar();
+      const halfSlope = vec2(dot(half, alongWind), dot(half, acrossWind)).div(noH).div(solarAlpha).toVar();
+      const distribution = dot(halfSlope, halfSlope).negate().exp()
+        .div(solarAlpha.x.mul(solarAlpha.y).mul(Math.PI).mul(noH.pow(4)).max(0.0000001)).toVar();
+      const viewWidth = vec2(dot(view, alongWind), dot(view, acrossWind)).mul(alpha).length();
+      const sunWidth = vec2(dot(sun, alongWind), dot(sun, acrossWind)).mul(alpha).length();
+      const masking = float(1).div(beckmannLambda(noV, viewWidth).add(beckmannLambda(sunFacing, sunWidth)).add(1));
+      const interfaceReflection = waterFresnel(voH, transmittedCosine(voH));
+      const direct = distribution.mul(masking).mul(interfaceReflection)
+        .mul(light.z).mul(mix(0.44, 0.29, light.y)).div(noV.mul(4)).toVar();
+      glint.assign(direct.div(direct.mul(0.19).add(1)));
+    });
 
-    // GGX distribution, height-correlated Smith visibility, Schlick Fresnel.
-    const noL = dot(normal, sun).clamp(0, 1).toVar();
-    const halfway = view.add(sun).add(vec3(0, 0.0001, 0)).normalize().toVar();
-    const noH = dot(normal, halfway).clamp(0, 1).toVar();
-    const voH = dot(view, halfway).clamp(0, 1).toVar();
-    const roughness = mix(0.023, 0.078, sea).add(smoothstep(90, 700, distance).mul(0.026)).toVar();
-    const alpha2 = roughness.mul(roughness).toVar();
-    const denom = noH.mul(noH).mul(alpha2.sub(1)).add(1).toVar();
-    const distribution = alpha2.div(denom.mul(denom).mul(Math.PI).max(0.000001));
-    const lambdaV = noL.mul(noV.mul(noV).mul(float(1).sub(alpha2)).add(alpha2).sqrt());
-    const lambdaL = noV.mul(noL.mul(noL).mul(float(1).sub(alpha2)).add(alpha2).sqrt());
-    const visibility = float(0.5).div(lambdaV.add(lambdaL).max(0.0001));
-    const solarFresnel = float(0.0204).add(float(1).sub(voH).pow(5).mul(0.9796));
-    const glint = distribution.mul(visibility).mul(solarFresnel).mul(noL).mul(light.z).mul(4.65).min(12);
+    const threshold = mix(0.35, 0.178, sea).toVar();
+    const whitecap = smoothstep(threshold, threshold.add(0.092), compression.add(detail.x.mul(0.12)))
+      .mul(smoothstep(0.16, 0.88, relativeHeight)).mul(smoothstep(0.36, 0.93, sea)).toVar();
+    const foamDomain = vec2(dot(vRest, wind.zx.mul(vec2(1, -1))), dot(vRest, wind.xz))
+      .mul(vec2(1.45, 0.56)).toVar();
+    const foamFootprint = fwidth(foamDomain).toVar();
+    const foamDetail = float(1).sub(smoothstep(0.23, 0.79, foamFootprint.x.max(foamFootprint.y)));
+    const foam = float(0).toVar();
+    If(whitecap.greaterThan(0.002), () => {
+      const breakup = gradientNoise(foamDomain.add(vec2(7.5, -12.2).add(vec2(0.02, -0.10).mul(clock)))).x;
+      const threads = float(1).sub(smoothstep(0.024, 0.21, breakup.add(detail.x.mul(0.48)).abs()));
+      const coverage = mix(0.58, mix(0.21, 1.0, threads), foamDetail);
+      foam.assign(whitecap.mul(coverage).mul(0.90));
+    });
+    const foamLight = mix(vec3(0.031, 0.048, 0.071), vec3(0.29, 0.37, 0.40), light.x)
+      .add(sky.sunColor.mul(light.z).mul(sunFacing.mul(0.32).add(0.06)));
 
-    const squeeze = float(1).sub(vCrest.y).add(detail.x.mul(0.18));
-    const whitecap = smoothstep(mix(0.37, 0.168, sea), mix(0.51, 0.315, sea), squeeze);
-    const foamTexture = smoothstep(-0.14, 0.14, detail.x);
-    const foam = whitecap.mul(crest).mul(foamTexture).mul(sea.mul(0.9).add(0.08)).mul(0.83);
-    const foamColor = mix(vec3(0.020, 0.035, 0.048), vec3(0.57, 0.65, 0.62), daylight)
-      .mul(noL.mul(0.48).add(0.44));
-
-    const water = mix(body.add(transmission), reflected.mul(reflectedVisibility), fresnel)
-      .add(sky.sunColor.mul(glint));
+    const water = mix(body.add(throughCrest), reflected, fresnel).add(sky.sunColor.mul(glint));
     const fog = float(1).sub(distance.mul(-0.00165).exp());
-    return mix(mix(water, foamColor, foam), sky.atmosphere(view.negate()), fog);
+    return mix(mix(water, foamLight, foam), sky.atmosphere(view.negate()), fog);
   });
 
   const material = new THREE.MeshBasicNodeMaterial();
@@ -391,7 +467,7 @@ export async function start({ progress, error }) {
   scene.add(ocean);
 
   const skyMaterial = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false });
-  skyMaterial.colorNode = vec4(sky.radiance(positionLocal.normalize(), float(1)), 1);
+  skyMaterial.colorNode = vec4(sky.radiance(positionLocal.normalize(), float(1), float(0)), 1);
   const dome = new THREE.Mesh(new THREE.SphereGeometry(22_000, 48, 24), skyMaterial);
   dome.renderOrder = 1;
   dome.frustumCulled = false;

@@ -48,3 +48,9 @@
 本轮维持解析海洋与近似邻浪反射；没有新增屏幕空间反射、反射光线追踪或泡沫历史模拟。
 
 实现依据：[Three.js RenderPipeline](https://threejs.org/docs/pages/RenderPipeline.html)、[固定 r183 Bloom 源码](https://github.com/mrdoob/three.js/blob/r183/examples/jsm/tsl/display/BloomNode.js)。
+
+## 离线体积云与更高精度单帧
+
+[离线渲染器及完整参数](offline/README.md)增加了三维云密度、自阴影、天空遮挡、同源倒影与海面云影，以及六组细波纹。默认使用原网页 256 倍网格采样量、64 个固定时刻子像素样本和 7680 × 4320 输出；渲染器会自动使用 32 位索引。
+
+后续已为本地离线环境配置 Mesa/Lavapipe 软件 Vulkan，可以真实执行光栅化与像素回读，补足前面验证记录中的适配器限制。网页交互版及手机帧率仍使用原有预算；离线规格不作为移动端实时帧率承诺。

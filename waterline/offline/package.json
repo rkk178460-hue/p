@@ -1,0 +1,8 @@
+{
+  "name": "waterline-offline-render",
+  "private": true,
+  "type": "module",
+  "scripts": { "render": "node --max-old-space-size=4096 render-ultra.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": { "three": "0.183.2", "webgpu": "0.6.2" }
+}

@@ -272,13 +272,18 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
     const rippleStrength = sea.mul(0.98).add(0.48).toVar();
     const perturbation = detail.yz.mul(baseNormal.y).mul(rippleStrength).toVar();
     const normal = baseNormal.sub(vec3(perturbation.x, 0, perturbation.y)).normalize().toVar();
+    // Band-limit the remaining normal variation before evaluating a narrow solar lobe.
+    // Keep derivatives outside the per-pixel lighting/foam branches (WebGPU uniformity).
+    const normalFootprint = fwidth(normal).toVar();
+    const pixelVariance = dot(normalFootprint, normalFootprint).mul(0.25).min(0.02);
     const noV = dot(normal, view).clamp(0.004, 1).toVar();
     const sunFacing = dot(normal, sun).clamp(0, 1).toVar();
     const relativeHeight = vCrest.x.div(sea.mul(1.24).add(0.28)).toVar();
     const compression = float(1).sub(vCrest.y).max(0).toVar();
 
     // Transfer unresolved surface slope into the specular lobe as detail fades.
-    const slopeVariance = vCrest.z.add(detail.w.mul(rippleStrength.mul(rippleStrength))).toVar();
+    const slopeVariance = vCrest.z.add(detail.w.mul(rippleStrength.mul(rippleStrength)))
+      .add(pixelVariance).toVar();
     const capillaryAlpha = mix(0.019, 0.056, sea).toVar();
     const alpha = vec2(1.38, 0.62).mul(slopeVariance)
       .add(capillaryAlpha.mul(capillaryAlpha)).sqrt().toVar();
@@ -305,11 +310,17 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
     const ray = reflect(view.negate(), normal).toVar();
     const spread = alpha.x.add(alpha.y).mul(0.61).add(0.028).toVar();
     const aboveWater = smoothstep(spread.mul(-1.40), spread, ray.y).toVar();
-    const skyElevation = ray.y.add(ray.y.mul(ray.y).add(spread.mul(spread)).sqrt()).mul(0.5);
+    // C1 horizon filter: exactly preserve rays above the footprint instead of lifting
+    // the entire reflected sky. The quadratic joins both sides with matching slopes.
+    const skyElevation = ray.y.add(spread).clamp(0, spread.mul(2)).pow(2)
+      .div(spread.mul(4)).add(ray.y.sub(spread).max(0));
     const reflectedRay = vec3(ray.x, skyElevation.max(0.001), ray.z).normalize().toVar();
     const skyReflection = sky.radiance(reflectedRay, float(0), spread).toVar();
-    // Below the horizon a reflection encounters other waves, which are lit by the same sky.
-    const neighboringWater = body.mul(0.67).add(skyReflection.mul(0.16));
+    // A neighboring wave still reflects strongly at grazing incidence. Use the same
+    // water interface instead of reducing its sky contribution to a fixed 16%.
+    const neighborNoV = ray.y.min(0).pow(2).add(spread.mul(spread)).sqrt().min(1).toVar();
+    const neighborFresnel = waterFresnel(neighborNoV, transmittedCosine(neighborNoV));
+    const neighboringWater = mix(body, skyReflection, neighborFresnel);
     const reflected = mix(neighboringWater, skyReflection, aboveWater);
 
     const glint = float(0).toVar();
@@ -342,18 +353,24 @@ function makeWaterMaterial(clock, sea, sun, light, sky, gridGrowth) {
       .mul(vec2(1.45, 0.56)).toVar();
     const foamFootprint = fwidth(foamDomain).toVar();
     const foamDetail = float(1).sub(smoothstep(0.23, 0.79, foamFootprint.x.max(foamFootprint.y)));
-    const foam = float(0).toVar();
-    If(whitecap.greaterThan(0.002), () => {
+    const foamCoverage = float(0.58).toVar();
+    // Unresolved foam uses its average coverage; skip its noise evaluation entirely.
+    If(whitecap.greaterThan(0.002).and(foamDetail.greaterThan(0.001)), () => {
       const breakup = gradientNoise(foamDomain.add(vec2(7.5, -12.2).add(vec2(0.02, -0.10).mul(clock)))).x;
       const threads = float(1).sub(smoothstep(0.024, 0.21, breakup.add(detail.x.mul(0.48)).abs()));
-      const coverage = mix(0.58, mix(0.21, 1.0, threads), foamDetail);
-      foam.assign(whitecap.mul(coverage).mul(0.90));
+      foamCoverage.assign(mix(0.58, mix(0.21, 1.0, threads), foamDetail));
     });
+    const foam = whitecap.mul(foamCoverage).mul(0.90);
+    // Foam scatters diffusely over the wave face, rather than following each ripple.
+    const foamSunFacing = dot(baseNormal, sun).clamp(0, 1);
+    const foamSkyView = baseNormal.y.mul(0.5).add(0.5).clamp(0, 1);
     const foamLight = mix(vec3(0.031, 0.048, 0.071), vec3(0.29, 0.37, 0.40), light.x)
-      .add(sky.sunColor.mul(light.z).mul(sunFacing.mul(0.32).add(0.06)));
+      .mul(foamSkyView).add(sky.sunColor.mul(light.z).mul(foamSunFacing).mul(0.38));
 
     const water = mix(body.add(throughCrest), reflected, fresnel).add(sky.sunColor.mul(glint));
-    const fog = float(1).sub(distance.mul(-0.00165).exp());
+    // Preserve the mid-distance before smoothly converging to the shared sky horizon.
+    const fogDensity = mix(0.00024, 0.00038, light.y);
+    const fog = float(1).sub(distance.mul(fogDensity).negate().exp());
     return mix(mix(water, foamLight, foam), sky.atmosphere(view.negate()), fog);
   });
 
@@ -641,3 +658,4 @@ export async function start({ progress, error }) {
   stage.dataset.ready = "";
   await renderer.setAnimationLoop(onFrame);
 }
+

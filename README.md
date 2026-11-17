@@ -91,3 +91,8 @@ FORM 用一条闭合路径演示描边、形状变换和三维投影。修改 `S
 本项目自编示例和工具采用 [MIT](LICENSE)。Motion Canvas 的机制来源保留 [MIT 通知](licenses/motion-canvas-MIT.txt)，连续镜头来源保留 [Promptible MIT 通知](licenses/promptible-MIT.txt)。字体保留 [原许可](licenses/dejavu-font.txt)。官方 Remotion skill 文件保留上游归属；固定快照未提供独立 LICENSE，不能据本项目 MIT 推断其再许可。Remotion 运行时采用自身许可，参考 [核对时的条款](licenses/remotion-runtime-license.md) 与官方当前条款。
 
 本仓库公开发布的是源码、参考资料和本地程序渲染。未复制案例音乐、品牌素材或原视频；案例移植的具体范围见来源记录。
+
+## Waterline · WebGPU 海洋
+
+[Waterline 入口](waterline/index.html)与[运行说明、海面校正及验证记录](waterline/README.md)。2026-11-18 基于 11 月 15 日版本校正了掠射角反射、白沫受光与远景雾，并保留现有移动端性能预算。
+

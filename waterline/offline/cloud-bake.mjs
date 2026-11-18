@@ -40,6 +40,17 @@ fn worley(p: vec3<f32>, period: f32) -> f32 {
 fn cloudUV(p:vec3<f32>)->vec3<f32>{
   return vec3<f32>(fract(p.x/WORLD+0.5),clamp((p.y-BASE)/(TOP-BASE),0.0,1.0),fract(p.z/WORLD+0.5));
 }
+fn clearSky(ray:vec3<f32>, sun:vec3<f32>, sunColor:vec3<f32>, light:vec3<f32>)->vec3<f32>{
+  let y=max(ray.y,0.0);
+  let towardSun=clamp(dot(ray,sun),0.0,1.0);
+  let haze=exp(-y*7.5);
+  let night=mix(vec3<f32>(0.003,0.0085,0.022),vec3<f32>(0.020,0.037,0.063),haze);
+  let daylight=mix(vec3<f32>(0.073,0.244,0.433),vec3<f32>(0.40,0.57,0.67),haze);
+  let horizon=mix(vec3<f32>(0.22,0.246,0.267),vec3<f32>(0.71,0.34,0.16),pow(towardSun,5.0));
+  let dusk=mix(vec3<f32>(0.037,0.080,0.143),horizon,haze);
+  let halo=pow(towardSun,38.0)*0.095+pow(towardSun,350.0)*0.15+pow(towardSun,2400.0)*0.24;
+  return mix(night,mix(daylight,dusk,light.y),light.x)+sunColor*halo*light.z;
+}
 `;
 
 async function compile(device, code, label) {
@@ -66,12 +77,12 @@ async function readHalf(device,tex,w,h,d=1){
   buffer.unmap();buffer.destroy();return dst;
 }
 
-export async function bakeClouds(device,sun,color,{volumeSize=256,envWidth=8192,envHeight=4096,steps=512}={}){
+export async function bakeClouds(device,sun,color,light,{volumeSize=256,envWidth=8192,envHeight=4096,steps=512}={}){
   const nx=volumeSize,ny=96,nz=volumeSize;
-  const cache=`clouds-v8-${nx}-${envWidth}-${envHeight}-${steps}`;
+  const cache=`clouds-relit-v2-${nx}-${envWidth}-${envHeight}-${steps}`;
   const sampler=device.createSampler({minFilter:'linear',magFilter:'linear',addressModeU:'repeat',addressModeV:'clamp-to-edge',addressModeW:'repeat'});
-  const params=new Float32Array([sun.x,sun.y,sun.z,0,color[0],color[1],color[2],0]);
-  const uniform=device.createBuffer({size:32,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});device.queue.writeBuffer(uniform,0,params);
+  const params=new Float32Array([sun.x,sun.y,sun.z,0,...color,0,light.x,light.y,light.z,0]);
+  const uniform=device.createBuffer({size:48,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});device.queue.writeBuffer(uniform,0,params);
   let fieldData,envData;
   try{
     fieldData=new Uint16Array((await fs.readFile(`./${cache}-field.bin`)).buffer);
@@ -93,9 +104,11 @@ export async function bakeClouds(device,sun,color,{volumeSize=256,envWidth=8192,
     +noise(vec3<f32>(uv.x*19.0,uv.y*7.7,uv.z*19.0),19.0)*0.26
     +noise(vec3<f32>(uv.x*39.0,uv.y*15.9,uv.z*39.0),39.0)*0.10;
   let puffy=1.0-worley(vec3<f32>(uv.x*17.0,uv.y*5.1,uv.z*17.0),17.0);
-  let shape=mix(broad,puffy,0.30);
-  let cloudTop=mix(0.43,0.99,coverage);
-  let profile=smoothstep(0.015,0.14,uv.y)*(1.0-smoothstep(cloudTop*0.45,cloudTop,uv.y));
+  let shape=mix(broad,puffy,0.37);
+  let baseVariation=noise(vec3<f32>(uv.x*25.0,5.2,uv.z*25.0),25.0);
+  let cloudBase=mix(0.006,0.105,baseVariation);
+  let cloudTop=clamp(mix(0.43,0.99,coverage)+(baseVariation-0.5)*0.16,0.38,0.99);
+  let profile=smoothstep(cloudBase,cloudBase+0.085,uv.y)*(1.0-smoothstep(cloudTop*0.45,cloudTop,uv.y));
   let baseDensity=clamp((shape-(1.0-coverage)*0.72)*2.8,0.0,1.0)*profile;
   let erosion=worley(vec3<f32>(uv.x*67.0,uv.y*19.0,uv.z*67.0),67.0);
   let fine=noise(vec3<f32>(uv.x*127.0,uv.y*37.0,uv.z*127.0),127.0);
@@ -106,7 +119,7 @@ export async function bakeClouds(device,sun,color,{volumeSize=256,envWidth=8192,
     await dispatch(device,densityPipeline,[{binding:0,resource:density.createView()}],Math.ceil(nx/4),Math.ceil(ny/4),Math.ceil(nz/4));
     const field=device.createTexture({dimension:'3d',size:[nx,ny,nz],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.COPY_SRC});
     const lightPipeline=await compile(device,common+/*wgsl*/`
-struct Params {sun:vec4<f32>,color:vec4<f32>};
+struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
 @group(0) @binding(0) var density:texture_3d<f32>;
 @group(0) @binding(1) var linearSampler:sampler;
 @group(0) @binding(2) var outTex:texture_storage_3d<rgba16float,write>;
@@ -122,13 +135,19 @@ struct Params {sun:vec4<f32>,color:vec4<f32>};
     optical+=textureSampleLevel(density,linearSampler,cloudUV(pos),0.0).r*ds*0.0048;
   }
   let rho=textureSampleLevel(density,linearSampler,uv,0.0).r;
-  var skyDepth=0.0;
-  let skyDs=(TOP-p.y)/12.0;
-  for(var j=0;j<12;j++){
-    let above=p+vec3<f32>(0.0,(f32(j)+0.5)*skyDs,0.0);
-    skyDepth+=textureSampleLevel(density,linearSampler,cloudUV(above),0.0).r*skyDs*0.0025;
+  // Sample the open sky above and to the sides of a cloud column.
+  var ambient=0.0;
+  for(var direction=0;direction<5;direction++){
+    let angle=f32(direction)*1.570796327;
+    let skyRay=select(vec3<f32>(0.8660254*cos(angle),0.5,0.8660254*sin(angle)),vec3<f32>(0.0,1.0,0.0),direction==0);
+    let skyDs=(TOP-p.y)/(skyRay.y*8.0);
+    var skyDepth=0.0;
+    for(var j=0;j<8;j++){
+      let above=p+skyRay*((f32(j)+0.5)*skyDs);
+      skyDepth+=textureSampleLevel(density,linearSampler,cloudUV(above),0.0).r*skyDs*0.0034;
+    }
+    ambient+=exp(-skyDepth)*select(0.17,0.32,direction==0);
   }
-  let ambient=exp(-skyDepth);
   textureStore(outTex,vec3<i32>(id),vec4<f32>(rho,exp(-optical),ambient,optical));
 }`,'Cloud self shadow');
     console.log('Integrating 48 sunlight samples through the cloud volume…');
@@ -148,7 +167,7 @@ struct Params {sun:vec4<f32>,color:vec4<f32>};
     await dispatch(device,microPipeline,[{binding:0,resource:micro.createView()}],16,16,16);
     const sky=device.createTexture({size:[envWidth,envHeight],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.COPY_SRC});
     const skyPipeline=await compile(device,common+/*wgsl*/`
-struct Params {sun:vec4<f32>,color:vec4<f32>};
+struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
 @group(0) @binding(0) var field:texture_3d<f32>;
 @group(0) @binding(1) var linearSampler:sampler;
 @group(0) @binding(2) var outTex:texture_storage_2d<rgba16float,write>;
@@ -157,7 +176,10 @@ struct Params {sun:vec4<f32>,color:vec4<f32>};
 fn hg(c:f32,g:f32)->f32{return (1.0-g*g)/pow(max(0.001,1.0+g*g-2.0*g*c),1.5);}
 fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
   let grain=textureSampleLevel(micro,linearSampler,fract(p/640.0),0.0);
-  return clamp((baseDensity-max(0.0,grain.r-0.18)*0.43*(1.0-baseDensity))*1.08,0.0,1.0);
+  let edgeWeight=smoothstep(0.015,0.16,baseDensity)*(1.0-smoothstep(0.32,1.0,baseDensity));
+  let erosion=max(0.0,grain.r-0.23)*0.43*(1.0-baseDensity);
+  let billow=(grain.g-0.5)*0.29*edgeWeight;
+  return clamp((baseDensity-erosion+billow)*1.10,0.0,1.0);
 }
 @compute @workgroup_size(8,8) fn main(@builtin(global_invocation_id) id:vec3<u32>){
   let size=textureDimensions(outTex);if(any(id.xy>=size)){return;}
@@ -171,7 +193,8 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
   let end=-radial*ray.y+sqrt(radial*radial*ray.y*ray.y+(TOP-origin.y)*(2.0*earth+TOP+origin.y));
   let ds=(end-start)/f32(${steps});
   let cosine=dot(ray,params.sun.xyz);
-  let phase=0.12*(hg(cosine,0.70)*0.86+hg(cosine,-0.25)*0.14);
+  let phase=0.10*(hg(cosine,0.69)*0.88+hg(cosine,-0.23)*0.12);
+  let airlight=clearSky(ray,params.sun.xyz,params.color.xyz,params.light.xyz);
   var T=1.0;var rgb=vec3<f32>(0.0);
   for(var i=0;i<${steps};i++){
     let t=start+(f32(i)+0.5)*ds;
@@ -183,30 +206,29 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
     if(rho>0.0001){
       let tau=rho*ds*0.0048;
       let opacity=1.0-exp(-tau);
-      let powder=1.0-exp(-rho*2.5);
       // Correct the local part of the bulk sunlight path for the eroded density.
       var correction=0.0;
       for(var k=0;k<3;k++){
-        let segment=48.0*pow(2.0,f32(k));
-        let travel=24.0+72.0*f32(k)+72.0*f32(k*k);
+        let segment=48.0*f32(1<<u32(k));
+        let travel=segment*1.5-48.0;
         let q=p+params.sun.xyz*travel;
         let bulk=textureSampleLevel(field,linearSampler,cloudUV(q),0.0).r;
         correction+=(detailDensity(q,bulk)-bulk)*segment*0.0048;
       }
       let sunlightDepth=max(0.0,cloud.a+correction);
       let skyVisibility=clamp(cloud.b+(cloud.r-rho)*0.30,0.0,1.0);
-      let ambient=vec3<f32>(0.105,0.163,0.235)*(0.28+0.72*skyVisibility);
-      let multiple=0.13*exp(-sunlightDepth*0.18)+0.045*exp(-sunlightDepth*0.035);
-      let direct=params.color.xyz*(exp(-sunlightDepth)*phase*(0.50+0.50*powder)+multiple);
-      let scatter=ambient+direct;
-      let aerial=exp(-t*0.000026);
-      let distant=vec3<f32>(0.24,0.26,0.30)+params.color.xyz*0.10;
-      rgb+=T*opacity*mix(distant,scatter,aerial);
+      let ambient=vec3<f32>(0.098,0.156,0.252)*(0.15+0.85*skyVisibility);
+      let multiple=0.105*exp(-sunlightDepth*0.26)+0.038*exp(-sunlightDepth*0.075);
+      let direct=params.color.xyz*(exp(-sunlightDepth)*phase+multiple)*params.light.z;
+      let groundBounce=vec3<f32>(0.011,0.025,0.036)*params.light.x;
+      let scatter=ambient+direct+groundBounce;
+      let aerial=exp(-t*0.000025);
+      rgb+=T*opacity*mix(airlight,scatter,aerial);
       T*=1.0-opacity;
       if(T<0.002){break;}
     }
   }
-  textureStore(outTex,vec2<i32>(id.xy),vec4<f32>(rgb,T));
+  textureStore(outTex,vec2<i32>(id.xy),vec4<f32>(rgb+T*airlight,T));
 }`,'Cloud radiance integration');
     console.log(`Integrating ${steps} cloud steps into the ${envWidth} × ${envHeight} HDR hemisphere…`);
     await dispatch(device,skyPipeline,[{binding:0,resource:field.createView()},{binding:1,resource:sampler},{binding:2,resource:sky.createView()},{binding:3,resource:{buffer:uniform}},{binding:4,resource:micro.createView()}],Math.ceil(envWidth/8),Math.ceil(envHeight/8));
@@ -223,5 +245,20 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
   const skyTexture=new THREE.DataTexture(envData,envWidth,envHeight,THREE.RGBAFormat,THREE.HalfFloatType);
   skyTexture.minFilter=THREE.LinearMipmapLinearFilter;skyTexture.magFilter=THREE.LinearFilter;
   skyTexture.wrapS=THREE.RepeatWrapping;skyTexture.generateMipmaps=true;skyTexture.needsUpdate=true;
-  return {fieldTexture,skyTexture,metadata:{volume:[nx,ny,nz],detailVolume:[64,64,64],hemisphere:[envWidth,envHeight],steps,sunlightSteps:48,localSunlightCorrectionSteps:3,ambientSteps:12,worldPeriod:WORLD,base:BASE,top:TOP,originOffset:[10500,0,0]}};
+  // Cosine-weighted hemispheric irradiance divided by pi, excluding the solar disk.
+  const diffuseSky = [0, 0, 0];
+  let weightSum = 0;
+  for (let j = 0; j < 64; j++) {
+    const y = Math.min(envHeight - 1, Math.floor((j + 0.5) * envHeight / 64));
+    const elevation = (y + 0.5) / envHeight * Math.PI * 0.5;
+    const weight = Math.cos(elevation) * Math.sin(elevation);
+    for (let i = 0; i < 128; i++) {
+      const x = Math.min(envWidth - 1, Math.floor((i + 0.5) * envWidth / 128));
+      const offset = (y * envWidth + x) * 4;
+      for (let c = 0; c < 3; c++) diffuseSky[c] += THREE.DataUtils.fromHalfFloat(envData[offset + c]) * weight;
+      weightSum += weight;
+    }
+  }
+  for (let c = 0; c < 3; c++) diffuseSky[c] /= weightSum;
+  return {fieldTexture,skyTexture,diffuseSky,metadata:{volume:[nx,ny,nz],detailVolume:[64,64,64],hemisphere:[envWidth,envHeight],steps,sunlightSteps:48,localSunlightCorrectionSteps:3,ambientDirections:5,ambientSteps:40,diffuseSky,worldPeriod:WORLD,base:BASE,top:TOP,originOffset:[10500,0,0]}};
 }

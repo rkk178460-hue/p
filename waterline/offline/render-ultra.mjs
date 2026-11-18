@@ -15,7 +15,7 @@ process.chdir(path.dirname(fileURLToPath(import.meta.url)));
 const width = Number(process.env.STILL_WIDTH || 7680);
 const height = Number(process.env.STILL_HEIGHT || 4320);
 const samples = Number(process.env.STILL_SAMPLES || 64);
-const output = path.resolve(process.env.STILL_OUTPUT || './renders/Waterline-256x-8K-Volumetric.png');
+const output = path.resolve(process.env.STILL_OUTPUT || './renders/Waterline-Relit-8K.png');
 const gridScale = Number(process.env.STILL_GRID_SCALE || 16);
 const rings = 192 * gridScale, spokes = 320 * gridScale;
 const root = path.resolve('../..');
@@ -59,7 +59,7 @@ const sun = uniform(new THREE.Vector3()), light = uniform(new THREE.Vector3());
 setSun(1053, sun, light);
 const sunset = light.value.y;
 const sunColor = [1, 0.36 + 0.53 * (1 - sunset), 0.115 + 0.605 * (1 - sunset)];
-const clouds = await bakeClouds(device, sun.value, sunColor, { volumeSize: Number(process.env.CLOUD_VOLUME || 256), envWidth: Number(process.env.CLOUD_WIDTH || 8192), envHeight: Number(process.env.CLOUD_HEIGHT || 4096), steps: Number(process.env.CLOUD_STEPS || 512) });
+const clouds = await bakeClouds(device, sun.value, sunColor, light.value, { volumeSize: Number(process.env.CLOUD_VOLUME || 256), envWidth: Number(process.env.CLOUD_WIDTH || 8192), envHeight: Number(process.env.CLOUD_HEIGHT || 4096), steps: Number(process.env.CLOUD_STEPS || 512) });
 configureClouds(clouds);
 const sky = makeSky(sun, light, clock);
 const { geometry, gridGrowth } = makeOceanGeometry(rings, spokes);
@@ -78,7 +78,7 @@ camera.lookAt(0, 3.98, -21);
 camera.updateMatrixWorld();
 ocean.position.set(camera.position.x, 0, camera.position.z);
 const skyMaterial = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false });
-skyMaterial.colorNode = vec4(sky.radiance(positionLocal.normalize(), float(1), float(0)), 1);
+skyMaterial.colorNode = vec4(sky.radiance(positionLocal.normalize(), float(1)), 1);
 const dome = new THREE.Mesh(new THREE.SphereGeometry(22000, 48, 24), skyMaterial);
 dome.position.copy(camera.position);
 dome.renderOrder = 1;
@@ -90,7 +90,7 @@ const metadata = {
   renderer: adapter.info.description, width, height, samples, rings, spokes,
   vertices: geometry.attributes.position.count, triangles: geometry.index.count / 3,
   geometrySampleMultiplier: rings * spokes / (192 * 320),
-  enhancements: ['six crossing ripple scales','volume density and erosion','sunlight self-shadow','dual HG phase and approximate multiple scattering','shared cloud reflections and surface shadows'],
+  lighting: ['five-direction cloud skylight visibility', 'directional atmospheric scattering', 'shared HDR sky irradiance', 'spectral water absorption and backscatter', 'rough-surface reflection and finite sun disk'],
   clouds: clouds.metadata,
   fixedTimeSeconds: clock.value, seaState: sea.value, timeOfDay: '17:33',
   camera: camera.position.toArray(), target: [0, 3.98, -21], exposure: 1.02,
@@ -154,9 +154,13 @@ hdrTexture.minFilter = THREE.LinearFilter;
 hdrTexture.magFilter = THREE.LinearFilter;
 hdrTexture.needsUpdate = true;
 const hdr = texture(hdrTexture, screenUV);
-const glow = bloom(hdr, 0.27, 0.45, 1.28);
+// Limit only the optical bloom input so the small, high-radiance sun does not
+// spill an oversized halo. The resolved HDR signal still goes to ACES intact.
+const peak = hdr.r.max(hdr.g).max(hdr.b);
+const bloomInput = vec4(hdr.rgb.mul(float(14).div(peak.max(14))), 1);
+const glow = bloom(bloomInput, 0.16, 0.39, 1.48);
 const fromCenter = screenUV.sub(0.5);
-const vignette = float(1).sub(dot(fromCenter, fromCenter).mul(0.21));
+const vignette = float(1).sub(dot(fromCenter, fromCenter).mul(0.10));
 renderer.setRenderTarget(null);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;

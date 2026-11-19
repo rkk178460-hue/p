@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import * as THREE from 'three/webgpu';
+import { azimuth, elevation, projectAngle, inverseProjectionWGSL, wgslAxis } from './sky-projection.mjs';
 
 const WORLD = 24000, BASE = 1250, TOP = 3350;
 const common = /* wgsl */`
@@ -18,8 +19,7 @@ fn noise(p: vec3<f32>, period: f32) -> f32 {
   for(var z=0; z<2; z++) { for(var y=0; y<2; y++) { for(var x=0; x<2; x++) {
     let d=vec3<f32>(f32(x),f32(y),f32(z));
     var cell = c+d;
-    cell.x = cell.x - floor(cell.x/period)*period;
-    cell.z = cell.z - floor(cell.z/period)*period;
+    cell -= floor(cell/period)*period;
     let weight = mix(vec3<f32>(1.0)-w,w,d);
     v += hash3(cell).x*weight.x*weight.y*weight.z;
   } } }
@@ -30,8 +30,7 @@ fn worley(p: vec3<f32>, period: f32) -> f32 {
   for(var z=-1;z<=1;z++){for(var y=-1;y<=1;y++){for(var x=-1;x<=1;x++){
     let offset=vec3<f32>(f32(x),f32(y),f32(z));
     var cell=c+offset;
-    cell.x=cell.x-floor(cell.x/period)*period;
-    cell.z=cell.z-floor(cell.z/period)*period;
+    cell-=floor(cell/period)*period;
     let delta=offset+hash3(cell)-f;
     nearest=min(nearest,dot(delta,delta));
   }}}
@@ -50,6 +49,21 @@ fn clearSky(ray:vec3<f32>, sun:vec3<f32>, sunColor:vec3<f32>, light:vec3<f32>)->
   let dusk=mix(vec3<f32>(0.037,0.080,0.143),horizon,haze);
   let halo=pow(towardSun,38.0)*0.095+pow(towardSun,350.0)*0.15+pow(towardSun,2400.0)*0.24;
   return mix(night,mix(daylight,dusk,light.y),light.x)+sunColor*halo*light.z;
+}
+`;
+
+const detailDensityWGSL = /* wgsl */`fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
+  // Repeat in all three axes. Two wind-sheared scales break up the
+  // silhouettes and the transition from sunlit turrets to translucent wisps.
+  let drift=vec3<f32>(p.x+p.y*0.21,p.y,p.z-p.y*0.12);
+  let grain=textureSampleLevel(micro,detailSampler,drift/1170.0,0.0);
+  let fine=textureSampleLevel(micro,detailSampler,drift.zxy/483.0+vec3<f32>(0.23,0.49,0.11),0.0);
+  let edge=1.0-smoothstep(0.32,0.95,baseDensity);
+  let small=textureSampleLevel(micro,detailSampler,drift.yzx/197.0+vec3<f32>(0.67,0.19,0.32),0.0);
+  let turbulence=(grain.r-0.36)*0.76+(fine.r-0.36)*0.38+(small.r-0.36)*0.19;
+  let erosion=(0.21+turbulence)*edge;
+  let support=smoothstep(0.002,0.065,baseDensity);
+  return clamp((baseDensity-erosion)*(0.79+0.60*grain.g)*support,0.0,1.0);
 }
 `;
 
@@ -78,8 +92,9 @@ async function readHalf(device,tex,w,h,d=1){
 }
 
 export async function bakeClouds(device,sun,color,light,{volumeSize=256,envWidth=8192,envHeight=4096,steps=512}={}){
-  const nx=volumeSize,ny=96,nz=volumeSize;
-  const cache=`clouds-relit-v2-${nx}-${envWidth}-${envHeight}-${steps}`;
+  const nx=volumeSize,ny=128,nz=volumeSize;
+  const originX=4000;
+  const cache=`clouds-cumulus-v3-${nx}-${envWidth}-${envHeight}-${steps}`;
   const sampler=device.createSampler({minFilter:'linear',magFilter:'linear',addressModeU:'repeat',addressModeV:'clamp-to-edge',addressModeW:'repeat'});
   const params=new Float32Array([sun.x,sun.y,sun.z,0,...color,0,light.x,light.y,light.z,0]);
   const uniform=device.createBuffer({size:48,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});device.queue.writeBuffer(uniform,0,params);
@@ -96,27 +111,74 @@ export async function bakeClouds(device,sun,color,light,{volumeSize=256,envWidth
 @compute @workgroup_size(4,4,4) fn main(@builtin(global_invocation_id) id:vec3<u32>){
   let size=textureDimensions(outTex);if(any(id>=size)){return;}
   let uv=(vec3<f32>(id)+0.5)/vec3<f32>(size);
-  let a=noise(vec3<f32>(uv.x*7.0,0.35,uv.z*7.0),7.0);
-  let b=noise(vec3<f32>(uv.x*15.0,2.6,uv.z*15.0),15.0);
-  let weather=a*0.72+b*0.28;
-  let coverage=smoothstep(0.43,0.73,weather);
-  let broad=noise(vec3<f32>(uv.x*9.0,uv.y*3.8,uv.z*9.0),9.0)*0.64
-    +noise(vec3<f32>(uv.x*19.0,uv.y*7.7,uv.z*19.0),19.0)*0.26
-    +noise(vec3<f32>(uv.x*39.0,uv.y*15.9,uv.z*39.0),39.0)*0.10;
-  let puffy=1.0-worley(vec3<f32>(uv.x*17.0,uv.y*5.1,uv.z*17.0),17.0);
-  let shape=mix(broad,puffy,0.37);
-  let baseVariation=noise(vec3<f32>(uv.x*25.0,5.2,uv.z*25.0),25.0);
-  let cloudBase=mix(0.006,0.105,baseVariation);
-  let cloudTop=clamp(mix(0.43,0.99,coverage)+(baseVariation-0.5)*0.16,0.38,0.99);
-  let profile=smoothstep(cloudBase,cloudBase+0.085,uv.y)*(1.0-smoothstep(cloudTop*0.45,cloudTop,uv.y));
-  let baseDensity=clamp((shape-(1.0-coverage)*0.72)*2.8,0.0,1.0)*profile;
-  let erosion=worley(vec3<f32>(uv.x*67.0,uv.y*19.0,uv.z*67.0),67.0);
-  let fine=noise(vec3<f32>(uv.x*127.0,uv.y*37.0,uv.z*127.0),127.0);
-  let rho=max(0.0,baseDensity-erosion*0.21*(1.0-baseDensity)-fine*0.065);
-  textureStore(outTex,vec3<i32>(id),vec4<f32>(rho,profile,coverage,1.0));
+  // A weather cell hosts one slanted updraft and several smaller turrets.
+  // Evaluate neighbors so growth crosses cell boundaries without seams.
+  let cells=13.0;
+  let tile=uv.xz*cells;
+  let warp=vec2<f32>(
+    noise(vec3<f32>(uv.x*21.0,uv.y*2.4,uv.z*21.0),21.0),
+    noise(vec3<f32>(uv.x*21.0,uv.y*2.4+7.4,uv.z*21.0),21.0))-0.5;
+  let q=tile+warp*0.33;
+  let index=floor(q);
+  let y=uv.y;
+  var envelope=-3.0;
+  for(var j=-1;j<=1;j++){for(var i=-1;i<=1;i++){
+    let cell=index+vec2<f32>(f32(i),f32(j));
+    let key=cell-floor(cell/cells)*cells;
+    let seed=hash3(vec3<f32>(key.x,3.13,key.y));
+    let weatherPos=(key+0.5)/cells;
+    let weather=noise(vec3<f32>(weatherPos.x*5.0,0.35,weatherPos.y*5.0),5.0);
+    let growth=smoothstep(0.20,0.84,weather*0.71+seed.z*0.29);
+    let center=cell+0.11+seed.xy*0.78;
+    let floorY=0.055+0.16*seed.y+0.052*(1.0-growth);
+    let columnHeight=0.11+growth*(0.63+seed.x*0.14);
+    let level=(y-floorY)/columnHeight;
+    let shear=vec2<f32>(0.23,-0.095)*clamp(level,0.0,1.0)*growth;
+    let tilted=q-center-shear;
+    let d=vec2<f32>(tilted.x+tilted.y*(seed.y-0.5)*0.76,tilted.y+tilted.x*(seed.x-0.5)*0.31);
+    let width=(0.18+0.44*growth)*(0.80+0.30*seed.x);
+    let core=1.0-length(vec3<f32>(d.x/(width*1.19), (level-0.29)/0.54, d.y/width));
+    var shape=core;
+    for(var t=0;t<4;t++){
+      let lobe=hash3(vec3<f32>(key.x,f32(t)*9.7+6.2,key.y));
+      let angle=6.2831853*(f32(t)+lobe.x*0.7)/4.0;
+      let lateral=vec2<f32>(cos(angle),sin(angle))*width*(0.33+lobe.y*0.35);
+      let top=0.44+0.33*lobe.z;
+      let radius=width*(0.43+0.26*lobe.y);
+      let turret=1.0-length(vec3<f32>((d.x-lateral.x)/radius,(level-top)/(0.29+0.14*lobe.x),(d.y-lateral.y)/radius));
+      shape=max(shape,turret);
+    }
+    // A shared condensation level shapes the underside; its edge thins in shear.
+    let baseEdge=(y-floorY+warp.x*0.095+warp.y*0.047+0.022)/0.093;
+    envelope=max(envelope,min(shape,baseEdge)-(1.0-growth)*0.36);
+  }}
+  // Coherent three-dimensional folds displace entire cloud faces. Smaller
+  // lobes erode those faces most strongly where air and droplets mix.
+  let meso=1.0-worley(vec3<f32>(uv.x*43.0,uv.y*3.76,uv.z*43.0),43.0);
+  let billow=1.0-worley(vec3<f32>(uv.x*87.0,uv.y*7.61,uv.z*87.0),87.0);
+  let folds=noise(vec3<f32>(uv.x*33.0,uv.y*2.9,uv.z*33.0),33.0)-0.5;
+  let curls=noise(vec3<f32>(uv.x*104.0,uv.y*9.1,uv.z*104.0),104.0)-0.5;
+  let boundary=envelope+(meso-0.43)*0.79+(billow-0.42)*0.47+folds*0.57+curls*0.23;
+  let humidity=noise(vec3<f32>(uv.x*27.0,uv.y*2.36,uv.z*27.0),27.0);
+  let bulk=smoothstep(-0.10,0.53,boundary)*(0.44+0.52*humidity);
+  let baseFade=smoothstep(0.005,0.047,y)*(1.0-smoothstep(0.92,1.0,y));
+  textureStore(outTex,vec3<i32>(id),vec4<f32>(bulk*baseFade,0.0,0.0,1.0));
 }`,'Cloud density and erosion');
     console.log('Baking 3D cloud density and multi-scale erosion…');
     await dispatch(device,densityPipeline,[{binding:0,resource:density.createView()}],Math.ceil(nx/4),Math.ceil(ny/4),Math.ceil(nz/4));
+    // A separate, periodically tiled detail volume preserves 20–100 m erosion
+    // without allocating a kilometre-scale, gigabyte-sized density grid.
+    const micro=device.createTexture({dimension:'3d',size:[96,96,96],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING});
+    const microPipeline=await compile(device,common+/*wgsl*/`
+@group(0) @binding(0) var outTex:texture_storage_3d<rgba16float,write>;
+@compute @workgroup_size(4,4,4) fn main(@builtin(global_invocation_id) id:vec3<u32>){
+  let uv=(vec3<f32>(id)+0.5)/96.0;
+  let erosion=worley(uv*4.0,4.0)*0.60+worley(uv*8.0,8.0)*0.28+worley(uv*16.0,16.0)*0.12;
+  let billow=noise(uv*8.0+vec3<f32>(7.1,3.2,11.6),8.0)*0.65+noise(uv*16.0,16.0)*0.35;
+  textureStore(outTex,vec3<i32>(id),vec4<f32>(erosion,billow,0.0,1.0));
+}`,'Fine cloud erosion volume');
+    await dispatch(device,microPipeline,[{binding:0,resource:micro.createView()}],24,24,24);
+    const detailSampler=device.createSampler({minFilter:'linear',magFilter:'linear',addressModeU:'repeat',addressModeV:'repeat',addressModeW:'repeat'});
     const field=device.createTexture({dimension:'3d',size:[nx,ny,nz],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.COPY_SRC});
     const lightPipeline=await compile(device,common+/*wgsl*/`
 struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
@@ -124,15 +186,21 @@ struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
 @group(0) @binding(1) var linearSampler:sampler;
 @group(0) @binding(2) var outTex:texture_storage_3d<rgba16float,write>;
 @group(0) @binding(3) var<uniform> params:Params;
+@group(0) @binding(4) var micro:texture_3d<f32>;
+@group(0) @binding(5) var detailSampler:sampler;
+${detailDensityWGSL}
 @compute @workgroup_size(4,4,4) fn main(@builtin(global_invocation_id) id:vec3<u32>){
   let size=textureDimensions(outTex);if(any(id>=size)){return;}
   let uv=(vec3<f32>(id)+0.5)/vec3<f32>(size);
   let p=vec3<f32>((uv.x-0.5)*WORLD,mix(BASE,TOP,uv.y),(uv.z-0.5)*WORLD);
   let travel=(TOP-p.y)/max(params.sun.y,0.035);
-  let ds=travel/48.0;var optical=0.0;
-  for(var i=0;i<48;i++){
-    let pos=p+params.sun.xyz*((f32(i)+0.5)*ds);
-    optical+=textureSampleLevel(density,linearSampler,cloudUV(pos),0.0).r*ds*0.0048;
+  var optical=0.0;
+  for(var i=0;i<72;i++){
+    let lo=f32(i)/72.0;let hi=(f32(i)+1.0)/72.0;
+    let ds=travel*(hi*hi-lo*lo);
+    let pos=p+params.sun.xyz*(travel*(lo*lo+hi*hi)*0.5);
+    let bulk=textureSampleLevel(density,linearSampler,cloudUV(pos),0.0).r;
+    if(bulk>0.001){optical+=detailDensity(pos,bulk)*ds*0.0048;}
   }
   let rho=textureSampleLevel(density,linearSampler,uv,0.0).r;
   // Sample the open sky above and to the sides of a cloud column.
@@ -144,28 +212,18 @@ struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
     var skyDepth=0.0;
     for(var j=0;j<8;j++){
       let above=p+skyRay*((f32(j)+0.5)*skyDs);
-      skyDepth+=textureSampleLevel(density,linearSampler,cloudUV(above),0.0).r*skyDs*0.0034;
+      let bulk=textureSampleLevel(density,linearSampler,cloudUV(above),0.0).r;
+      if(bulk>0.001){skyDepth+=detailDensity(above,bulk)*skyDs*0.0034;}
     }
     ambient+=exp(-skyDepth)*select(0.17,0.32,direction==0);
   }
   textureStore(outTex,vec3<i32>(id),vec4<f32>(rho,exp(-optical),ambient,optical));
 }`,'Cloud self shadow');
-    console.log('Integrating 48 sunlight samples through the cloud volume…');
-    await dispatch(device,lightPipeline,[{binding:0,resource:density.createView()},{binding:1,resource:sampler},{binding:2,resource:field.createView()},{binding:3,resource:{buffer:uniform}}],Math.ceil(nx/4),Math.ceil(ny/4),Math.ceil(nz/4));
+    console.log('Integrating 72 sunlight samples through the cloud volume…');
+    await dispatch(device,lightPipeline,[{binding:0,resource:density.createView()},{binding:1,resource:sampler},{binding:2,resource:field.createView()},{binding:3,resource:{buffer:uniform}},{binding:4,resource:micro.createView()},{binding:5,resource:detailSampler}],Math.ceil(nx/4),Math.ceil(ny/4),Math.ceil(nz/4));
     density.destroy();
-    // A separate, periodically tiled detail volume preserves 20–100 m erosion
-    // without allocating a kilometre-scale, gigabyte-sized density grid.
-    const micro=device.createTexture({dimension:'3d',size:[64,64,64],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING});
-    const microPipeline=await compile(device,common+/*wgsl*/`
-@group(0) @binding(0) var outTex:texture_storage_3d<rgba16float,write>;
-@compute @workgroup_size(4,4,4) fn main(@builtin(global_invocation_id) id:vec3<u32>){
-  let uv=(vec3<f32>(id)+0.5)/64.0;
-  let erosion=worley(uv*4.0,4.0)*0.60+worley(uv*8.0,8.0)*0.28+worley(uv*16.0,16.0)*0.12;
-  let billow=noise(uv*8.0+vec3<f32>(7.1,3.2,11.6),8.0)*0.65+noise(uv*16.0,16.0)*0.35;
-  textureStore(outTex,vec3<i32>(id),vec4<f32>(erosion,billow,0.0,1.0));
-}`,'Fine cloud erosion volume');
-    await dispatch(device,microPipeline,[{binding:0,resource:micro.createView()}],16,16,16);
     const sky=device.createTexture({size:[envWidth,envHeight],format:'rgba16float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.STORAGE_BINDING|GPUTextureUsage.COPY_SRC});
+
     const skyPipeline=await compile(device,common+/*wgsl*/`
 struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
 @group(0) @binding(0) var field:texture_3d<f32>;
@@ -173,19 +231,17 @@ struct Params {sun:vec4<f32>,color:vec4<f32>,light:vec4<f32>};
 @group(0) @binding(2) var outTex:texture_storage_2d<rgba16float,write>;
 @group(0) @binding(3) var<uniform> params:Params;
 @group(0) @binding(4) var micro:texture_3d<f32>;
+@group(0) @binding(5) var detailSampler:sampler;
+${inverseProjectionWGSL}
 fn hg(c:f32,g:f32)->f32{return (1.0-g*g)/pow(max(0.001,1.0+g*g-2.0*g*c),1.5);}
-fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
-  let grain=textureSampleLevel(micro,linearSampler,fract(p/640.0),0.0);
-  let edgeWeight=smoothstep(0.015,0.16,baseDensity)*(1.0-smoothstep(0.32,1.0,baseDensity));
-  let erosion=max(0.0,grain.r-0.23)*0.43*(1.0-baseDensity);
-  let billow=(grain.g-0.5)*0.29*edgeWeight;
-  return clamp((baseDensity-erosion+billow)*1.10,0.0,1.0);
-}
+${detailDensityWGSL}
 @compute @workgroup_size(8,8) fn main(@builtin(global_invocation_id) id:vec3<u32>){
   let size=textureDimensions(outTex);if(any(id.xy>=size)){return;}
   let uv=(vec2<f32>(id.xy)+0.5)/vec2<f32>(size);
-  let az=(uv.x-0.5)*6.28318530718;let el=uv.y*1.57079632679;
-  let ray=vec3<f32>(cos(az)*cos(el),sin(el),sin(az)*cos(el));
+  let signedU=2.0*uv.x-1.0;
+  let az=sign(signedU)*angleAt(abs(signedU),${wgslAxis(azimuth)});
+  let el=angleAt(uv.y,${wgslAxis(elevation)});
+  let ray=vec3<f32>(sin(az)*cos(el),sin(el),-cos(az)*cos(el));
   // The spherical shell prevents an infinite planar cloud wall at the horizon.
   let earth=6371000.0;let origin=vec3<f32>(0.0,4.98,21.0);
   let radial=earth+origin.y;
@@ -200,25 +256,28 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
     let t=start+(f32(i)+0.5)*ds;
     var p=origin+ray*t;
     p.y+=dot(p.xz,p.xz)/(2.0*earth);
-    p.x+=10500.0;
+    p.x+=${originX.toFixed(1)};
     let cloud=textureSampleLevel(field,linearSampler,cloudUV(p),0.0);
+    if(cloud.r<0.001){continue;}
     let rho=detailDensity(p,cloud.r);
     if(rho>0.0001){
       let tau=rho*ds*0.0048;
       let opacity=1.0-exp(-tau);
-      // Correct the local part of the bulk sunlight path for the eroded density.
+      // Recover sub-voxel self-shadow on the illuminated faces: compare
+      // the near section of the fine ray with the coarse local average.
       var correction=0.0;
       for(var k=0;k<3;k++){
-        let segment=48.0*f32(1<<u32(k));
-        let travel=segment*1.5-48.0;
-        let q=p+params.sun.xyz*travel;
+        let dsLocal=21.0*f32(1<<u32(k));
+        let q=p+params.sun.xyz*(1.5*dsLocal-21.0);
         let bulk=textureSampleLevel(field,linearSampler,cloudUV(q),0.0).r;
-        correction+=(detailDensity(q,bulk)-bulk)*segment*0.0048;
+        let local=detailDensity(q,bulk);
+        let mean=max(0.0,bulk-0.21*(1.0-smoothstep(0.32,0.95,bulk)));
+        correction+=(local-mean)*dsLocal*0.0048;
       }
       let sunlightDepth=max(0.0,cloud.a+correction);
       let skyVisibility=clamp(cloud.b+(cloud.r-rho)*0.30,0.0,1.0);
-      let ambient=vec3<f32>(0.098,0.156,0.252)*(0.15+0.85*skyVisibility);
-      let multiple=0.105*exp(-sunlightDepth*0.26)+0.038*exp(-sunlightDepth*0.075);
+      let ambient=vec3<f32>(0.125,0.175,0.242)*(0.16+0.84*skyVisibility);
+      let multiple=0.16*exp(-sunlightDepth*0.32)+0.058*exp(-sunlightDepth*0.092);
       let direct=params.color.xyz*(exp(-sunlightDepth)*phase+multiple)*params.light.z;
       let groundBounce=vec3<f32>(0.011,0.025,0.036)*params.light.x;
       let scatter=ambient+direct+groundBounce;
@@ -231,7 +290,7 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
   textureStore(outTex,vec2<i32>(id.xy),vec4<f32>(rgb+T*airlight,T));
 }`,'Cloud radiance integration');
     console.log(`Integrating ${steps} cloud steps into the ${envWidth} × ${envHeight} HDR hemisphere…`);
-    await dispatch(device,skyPipeline,[{binding:0,resource:field.createView()},{binding:1,resource:sampler},{binding:2,resource:sky.createView()},{binding:3,resource:{buffer:uniform}},{binding:4,resource:micro.createView()}],Math.ceil(envWidth/8),Math.ceil(envHeight/8));
+    await dispatch(device,skyPipeline,[{binding:0,resource:field.createView()},{binding:1,resource:sampler},{binding:2,resource:sky.createView()},{binding:3,resource:{buffer:uniform}},{binding:4,resource:micro.createView()},{binding:5,resource:detailSampler}],Math.ceil(envWidth/8),Math.ceil(envHeight/8));
     fieldData=await readHalf(device,field,nx,ny,nz);envData=await readHalf(device,sky,envWidth,envHeight);
     await fs.writeFile(`./${cache}-field.bin`,new Uint8Array(fieldData.buffer));
     await fs.writeFile(`./${cache}-sky.bin`,new Uint8Array(envData.buffer));
@@ -249,16 +308,18 @@ fn detailDensity(p:vec3<f32>,baseDensity:f32)->f32{
   const diffuseSky = [0, 0, 0];
   let weightSum = 0;
   for (let j = 0; j < 64; j++) {
-    const y = Math.min(envHeight - 1, Math.floor((j + 0.5) * envHeight / 64));
-    const elevation = (y + 0.5) / envHeight * Math.PI * 0.5;
-    const weight = Math.cos(elevation) * Math.sin(elevation);
+    const angle = (j + 0.5) / 64 * Math.PI / 2;
+    const y = Math.min(envHeight - 1, Math.floor(projectAngle(angle, elevation) * envHeight));
+    const weight = Math.cos(angle) * Math.sin(angle);
     for (let i = 0; i < 128; i++) {
-      const x = Math.min(envWidth - 1, Math.floor((i + 0.5) * envWidth / 128));
+      const angleX = ((i + 0.5) / 128 * 2 - 1) * Math.PI;
+      const u = 0.5 + Math.sign(angleX) * 0.5 * projectAngle(Math.abs(angleX), azimuth);
+      const x = Math.min(envWidth - 1, Math.floor(u * envWidth));
       const offset = (y * envWidth + x) * 4;
       for (let c = 0; c < 3; c++) diffuseSky[c] += THREE.DataUtils.fromHalfFloat(envData[offset + c]) * weight;
       weightSum += weight;
     }
   }
   for (let c = 0; c < 3; c++) diffuseSky[c] /= weightSum;
-  return {fieldTexture,skyTexture,diffuseSky,metadata:{volume:[nx,ny,nz],detailVolume:[64,64,64],hemisphere:[envWidth,envHeight],steps,sunlightSteps:48,localSunlightCorrectionSteps:3,ambientDirections:5,ambientSteps:40,diffuseSky,worldPeriod:WORLD,base:BASE,top:TOP,originOffset:[10500,0,0]}};
+  return {fieldTexture,skyTexture,diffuseSky,metadata:{volume:[nx,ny,nz],detailVolume:[96,96,96],hemisphere:[envWidth,envHeight],steps,sunlightSteps:72,localSunlightCorrectionSteps:3,ambientDirections:5,ambientSteps:40,diffuseSky,worldPeriod:WORLD,base:BASE,top:TOP,originOffset:[originX,0,0],projection:{azimuth,elevation}}};
 }

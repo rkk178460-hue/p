@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { deflateSync } from 'node:zlib';
+import { encodeDisplayRows, writePNG } from './png-output.mjs';
 import * as THREE from 'three/webgpu';
-import { uniform, vec4, float, positionLocal, texture, screenUV, dot } from 'three/tsl';
+import { uniform, vec4, float, positionLocal, texture, textureLoad, screenCoordinate, screenUV, dot } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { create, globals } from 'webgpu';
 import { bakeClouds } from './cloud-bake.mjs';
@@ -51,7 +51,7 @@ await renderer.init();
 renderer.setSize(width, height, false);
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-const target = new THREE.RenderTarget(width, height, { type: THREE.HalfFloatType, depthBuffer: true });
+const target = new THREE.RenderTarget(width, height, { type: THREE.FloatType, depthBuffer: true });
 target.texture.colorSpace = THREE.LinearSRGBColorSpace;
 
 const clock = uniform(11.25), sea = uniform(0.46);
@@ -59,7 +59,7 @@ const sun = uniform(new THREE.Vector3()), light = uniform(new THREE.Vector3());
 setSun(1053, sun, light);
 const sunset = light.value.y;
 const sunColor = [1, 0.36 + 0.53 * (1 - sunset), 0.115 + 0.605 * (1 - sunset)];
-const clouds = await bakeClouds(device, sun.value, sunColor, light.value, { volumeSize: Number(process.env.CLOUD_VOLUME || 256), envWidth: Number(process.env.CLOUD_WIDTH || 8192), envHeight: Number(process.env.CLOUD_HEIGHT || 4096), steps: Number(process.env.CLOUD_STEPS || 512) });
+const clouds = await bakeClouds(device, sun.value, sunColor, light.value, { volumeSize: Number(process.env.CLOUD_VOLUME || 384), envWidth: Number(process.env.CLOUD_WIDTH || 8192), envHeight: Number(process.env.CLOUD_HEIGHT || 4096), steps: Number(process.env.CLOUD_STEPS || 512) });
 configureClouds(clouds);
 const sky = makeSky(sun, light, clock);
 const { geometry, gridGrowth } = makeOceanGeometry(rings, spokes);
@@ -94,7 +94,8 @@ const metadata = {
   clouds: clouds.metadata,
   fixedTimeSeconds: clock.value, seaState: sea.value, timeOfDay: '17:33',
   camera: camera.position.toArray(), target: [0, 3.98, -21], exposure: 1.02,
-  accumulation: '16-bit linear HDR samples accumulated in Float32 before bloom and a single ACES/sRGB transform',
+  accumulation: '32-bit float scene target and sample accumulation, followed by bloom and a floating-point ACES/sRGB pass',
+  outputPrecision: 'RGB16 master and achromatically dithered RGB8 display copy',
 };
 console.log(JSON.stringify(metadata));
 
@@ -114,7 +115,6 @@ function halton(n, base) {
   while (n) { f /= base; value += f * (n % base); n = Math.floor(n / base); }
   return value;
 }
-const halfLookup = Float32Array.from({ length: 65536 }, (_, i) => THREE.DataUtils.fromHalfFloat(i));
 const accumulated = new Float32Array(width * height * 4);
 const signatures = [];
 const started = performance.now();
@@ -125,16 +125,17 @@ for (let sample = 0; sample < samples; sample++) {
   const jitterY = samples === 1 ? 0 : halton(sample + 1, 3) - 0.5;
   camera.setViewOffset(width, height, jitterX, jitterY, width, height);
   renderer.render(scene, camera);
-  await readTexture(renderer.backend.get(target.texture).texture, 8, (buffer, stride) => {
-    const values = new Uint16Array(buffer);
-    const rowStride = stride / 2;
+  await readTexture(renderer.backend.get(target.texture).texture, 16, (buffer, stride) => {
+    const values = new Float32Array(buffer);
+    const bits = new Uint32Array(buffer);
+    const rowStride = stride / 4;
     let signature = 2166136261;
-    for (let i = 0; i < values.length; i += 1277) signature = Math.imul(signature ^ values[i], 16777619) >>> 0;
+    for (let i = 0; i < bits.length; i += 1277) signature = Math.imul(signature ^ bits[i], 16777619) >>> 0;
     signatures.push(signature);
     for (let y = 0; y < height; y++) {
       const sourceOffset = y * rowStride, destOffset = y * width * 4;
       for (let x = 0; x < width * 4; x++) {
-        const value = halfLookup[values[sourceOffset + x]];
+        const value = values[sourceOffset + x];
         if (!Number.isFinite(value)) throw Error('Nonfinite radiance in actual readback');
         accumulated[destOffset + x] += value;
       }
@@ -147,7 +148,17 @@ camera.clearViewOffset();
 if (samples > 1 && new Set(signatures).size < 2) throw Error('Subpixel samples did not vary');
 metadata.distinctSubpixelSamples = new Set(signatures).size;
 const averaged = new Uint16Array(accumulated.length);
-for (let i = 0; i < averaged.length; i++) averaged[i] = THREE.DataUtils.toHalfFloat(accumulated[i] / samples);
+for (let i = 0; i < averaged.length; i++) {
+  accumulated[i] /= samples;
+  averaged[i] = THREE.DataUtils.toHalfFloat(accumulated[i]);
+}
+// Bloom alone uses the filterable, lower-precision copy. The image itself
+// uses an unfiltered 1:1 load from the actual float32 resolved radiance.
+const resolved = new THREE.DataTexture(accumulated, width, height, THREE.RGBAFormat, THREE.FloatType);
+resolved.colorSpace = THREE.LinearSRGBColorSpace;
+resolved.minFilter = THREE.NearestFilter;
+resolved.magFilter = THREE.NearestFilter;
+resolved.needsUpdate = true;
 const hdrTexture = new THREE.DataTexture(averaged, width, height, THREE.RGBAFormat, THREE.HalfFloatType);
 hdrTexture.colorSpace = THREE.LinearSRGBColorSpace;
 hdrTexture.minFilter = THREE.LinearFilter;
@@ -161,54 +172,26 @@ const bloomInput = vec4(hdr.rgb.mul(float(14).div(peak.max(14))), 1);
 const glow = bloom(bloomInput, 0.16, 0.39, 1.48);
 const fromCenter = screenUV.sub(0.5);
 const vignette = float(1).sub(dot(fromCenter, fromCenter).mul(0.10));
-renderer.setRenderTarget(null);
+renderer.setRenderTarget(target);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const pipeline = new THREE.RenderPipeline(renderer);
-pipeline.outputNode = vec4(hdr.rgb.add(glow.rgb).mul(vignette), 1);
+const resolvedPixel = textureLoad(resolved, screenCoordinate.xy);
+pipeline.outputNode = vec4(resolvedPixel.rgb.add(glow.rgb).mul(vignette), 1);
 pipeline.render();
-const rgba = await readTexture(finalTexture, 4, (buffer, stride) => {
-  const bytes = new Uint8Array(buffer);
-  const output = Buffer.alloc(width * height * 4);
-  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-    const a = y * stride + 4 * x, b = 4 * (y * width + x);
-    output[b] = bytes[a + (format.startsWith('bgra') ? 2 : 0)];
-    output[b + 1] = bytes[a + 1];
-    output[b + 2] = bytes[a + (format.startsWith('bgra') ? 0 : 2)];
-    output[b + 3] = 255;
-  }
-  return output;
-});
+const rows = await readTexture(renderer.backend.get(target.texture).texture, 16,
+  (buffer, stride) => encodeDisplayRows(new Float32Array(buffer), width, height, stride / 4));
 const gpuError = await device.popErrorScope();
 if (gpuError || errors.length) throw Error(gpuError?.message || errors.join('\n'));
 
-const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
-  let c = n; for (let i = 0; i < 8; i++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-function chunk(type, data) {
-  const label = Buffer.from(type), head = Buffer.alloc(4), checksum = Buffer.alloc(4);
-  head.writeUInt32BE(data.length);
-  let crc = 0xffffffff;
-  for (const byte of Buffer.concat([label, data])) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8);
-  checksum.writeUInt32BE((crc ^ 0xffffffff) >>> 0);
-  return Buffer.concat([head, label, data, checksum]);
-}
-const header = Buffer.alloc(13);
-header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 6;
-const scanlines = Buffer.alloc((width * 4 + 1) * height);
-for (let y = 0; y < height; y++) rgba.copy(scanlines, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4);
 metadata.renderSeconds = (performance.now() - started) / 1000;
 await fs.mkdir(path.dirname(output), { recursive: true });
-await fs.writeFile(output, Buffer.concat([
-  Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', header), chunk('sRGB', Buffer.from([0])),
-  chunk('tEXt', Buffer.from('Waterline Render\0' + JSON.stringify(metadata))),
-  chunk('IDAT', deflateSync(scanlines, { level: 7 })), chunk('IEND', Buffer.alloc(0)),
-]));
+await writePNG(output, rows.master, width, height, 16, metadata);
+await writePNG(output.replace(/\.png$/i, '-display.png'), rows.display, width, height, 8, metadata);
 await fs.writeFile(output.replace(/\.png$/i, '.json'), JSON.stringify(metadata, null, 2) + '\n');
 console.log('Saved:', output, 'renderSeconds:', metadata.renderSeconds.toFixed(1));
-pipeline.dispose(); target.dispose(); hdrTexture.dispose(); geometry.dispose(); material.dispose(); skyMaterial.dispose();
+pipeline.dispose(); resolved.dispose(); target.dispose(); hdrTexture.dispose(); geometry.dispose(); material.dispose(); skyMaterial.dispose();
 clouds.skyTexture.dispose(); clouds.fieldTexture.dispose();
 renderer.dispose(); finalTexture.destroy(); device.destroy();
 delete globalThis.navigator;

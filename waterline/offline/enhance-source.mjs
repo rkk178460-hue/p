@@ -25,8 +25,16 @@ function makeSky(sun, light, clock) {`);
   const radianceStart = source.indexOf('  const atmosphere = Fn(');
   const radianceEnd = source.indexOf('\n  return { atmosphere, radiance, sunColor };', radianceStart);
   if (radianceStart < 0 || radianceEnd < 0) throw Error('Sky boundaries missing');
-  source = source.slice(0, radianceStart) + `  const sampleSky = (ray, lod) => {
-    const uv = vec2(ray.z.atan(ray.x).div(TAU).add(0.5), ray.y.clamp(0, 1).asin().mul(2 / Math.PI));
+  source = source.slice(0, radianceStart) + `  const projectAngle = (t, axis) => {
+    const { inner, outer, rate, mass } = axis;
+    const ramp = t.sub(inner).clamp(0, outer-inner);
+    return t.mul(rate).sub(ramp.mul(ramp).div(2*(outer-inner)).add(t.sub(outer).max(0)).mul(rate-1)).div(mass);
+  };
+  const { azimuth, elevation } = offlineClouds.metadata.projection;
+  const sampleSky = (ray, lod) => {
+    const az = ray.x.atan(ray.z.negate()).toVar();
+    const el = ray.y.clamp(0,1).asin();
+    const uv = vec2(projectAngle(az.abs(),azimuth).mul(az.sign()).mul(0.5).add(0.5),projectAngle(el,elevation));
     return texture(offlineClouds.skyTexture, uv).level(lod);
   };
   const diffuseSky = vec3(...offlineClouds.diffuseSky);
@@ -37,7 +45,12 @@ function makeSky(sun, light, clock) {`);
     return skySample.rgb.add(sunColor.mul(disk.mul(diskWeight).mul(light.z).mul(SOLAR_RADIANCE)).mul(skySample.a));
   });
   const reflection = Fn(([ray, spread]) => {
-    const lod = spread.mul(offlineClouds.metadata.hemisphere[0] / TAU * 0.43).add(1).log2();
+    const el = ray.y.clamp(0,1).asin();
+    const az = ray.x.atan(ray.z.negate()).abs();
+    const rate = (a,axis) => float(1).sub(a.sub(axis.inner).div(axis.outer-axis.inner).clamp(0,1)).mul(axis.rate-1).add(1);
+    const perRadX = rate(az,azimuth).mul(offlineClouds.metadata.hemisphere[0]/(2*azimuth.mass));
+    const perRadY = rate(el,elevation).mul(offlineClouds.metadata.hemisphere[1]/elevation.mass);
+    const lod = spread.mul(perRadX.min(perRadY)).mul(0.25).add(1).log2();
     const side = vec3(ray.z, 0, ray.x.negate()).mul(spread.mul(0.43)).toVar();
     const left = sampleSky(ray.add(side).normalize(), lod).rgb;
     const right = sampleSky(ray.sub(side).normalize(), lod).rgb;
@@ -45,7 +58,7 @@ function makeSky(sun, light, clock) {`);
   });
   const directVisibility = Fn(([position]) => {
     const entry = position.add(sun.mul(float(1250).sub(position.y).div(sun.y.max(0.035))));
-    const uv = vec3(entry.x.add(10500).div(24000).add(0.5).fract(), 0.5 / 96, entry.z.div(24000).add(0.5).fract());
+    const uv = vec3(entry.x.add(offlineClouds.metadata.originOffset[0]).div(24000).add(0.5).fract(), 0.5 / offlineClouds.metadata.volume[1], entry.z.div(24000).add(0.5).fract());
     return texture3D(offlineClouds.fieldTexture, uv).level(0).g;
   });
 ` + source.slice(radianceEnd);
@@ -57,6 +70,23 @@ function makeSky(sun, light, clock) {`);
     const resolvedGust = float(1).sub(smoothstep(0.24, 0.80, gustFootprint.x.max(gustFootprint.y)));
     const gust = gradientNoise(gustDomain).x.mul(resolvedGust).mul(0.68).add(1).toVar();
     const rippleStrength = sea.mul(0.98).add(0.48).mul(gust).toVar();`);
+  replace('    return vec4(fbm, slope, lostVariance);', `    // Short wind waves ride on the swell. Fade each band with its own screen footprint.
+    const bend = gradientNoise(rest.mul(vec2(0.21,0.34)).add(vec2(-3.7,8.9))).toVar();
+    const packets = [[0.64, 67, 0.034, 0.7], [0.29, 96, 0.023, 2.8],
+      [0.137, 46, 0.014, 5.2], [0.074, 115, 0.009, 1.65]];
+    for (const [length, heading, steepness, seed] of packets) {
+      const theta = heading * Math.PI / 180;
+      const k = TAU / length;
+      const directional = vec2(Math.cos(theta),Math.sin(theta));
+      const phase = dot(rest,directional).mul(k).add(bend.x.mul(2.4+seed))
+        .sub(clock.mul(Math.sqrt(9.81*k+0.000073*k*k*k))).add(seed).toVar();
+      const keep = float(1).sub(smoothstep(1.2,3.0,fwidth(phase)));
+      const localSlope = directional.add(bend.yz.mul(vec2(0.21,0.34)).mul((2.4+seed)/k));
+      const strength = bend.x.mul(0.64).add(0.81).mul(steepness);
+      slope.addAssign(localSlope.mul(phase.cos()).mul(strength).mul(keep));
+      lostVariance.addAssign(strength.mul(strength).mul(0.5).mul(float(1).sub(keep.mul(keep))));
+    }
+    return vec4(fbm, slope, lostVariance);`);
   replace('const noV = dot(normal, view).clamp(0.004, 1).toVar();', `const signedNoV = dot(normal, view).toVar();
     const noV = signedNoV.clamp(0.004, 1).toVar();
     const sunVisible = light.z.mul(sky.directVisibility(positionWorld)).toVar();`);
